@@ -13,13 +13,13 @@ public:
 //     init(vocab_R, n_min, n_max);
 //   };
   // contructor with window_size for term cooccurence matrix
-  VocabCorpus(const CharacterVector vocab_R, uint32_t n_min, uint32_t n_max, uint32_t window_size = 0) {
+  VocabCorpus(const CharacterVector vocab_R, uint32_t n_min, uint32_t n_max, uint32_t window_size, const CharacterVector stopwords_R) {
     tcm = SparseTripletMatrix<float>(vocab_R.size(), vocab_R.size());
     this->window_size = window_size;
-    init(vocab_R, n_min, n_max);
+    init(vocab_R, n_min, n_max, stopwords_R);
   };
 
-  void insert_terms (vector< string> &terms, int flag_grow_dtm) {
+  void insert_terms (vector< string> &terms) {
 
     uint32_t term_index, context_term_index;
     size_t K = terms.size();
@@ -41,10 +41,8 @@ public:
       if(term_iterator != this->vocab.end()) {
         // get main word index from vocab
         term_index = term_iterator->second;
-        // should we grow DTM ?
-        if(flag_grow_dtm)
-          // increment count for input term
-          dtm.add(doc_count, term_index, 1);
+        // increment count for input term
+        dtm.add(doc_count, term_index, 1);
         //###########################################
         // cooccurence related
         // will check 1 == ngram_min == ngram_max on R side
@@ -78,16 +76,21 @@ public:
     }
   }
 
-  void insert_document(const CharacterVector doc, int flag_grow_dtm) {
-    vector< string> ngrams = get_ngrams(doc, this->ngram_min, this->ngram_max, this->ngram_delim);
-    insert_terms(ngrams, flag_grow_dtm);
+  void insert_document(const CharacterVector doc) {
+    generate_ngrams(doc, this->ngram_min, this->ngram_max,
+                    this->stopwords,
+                    this->terms_filtered_buffer,
+                    this->ngrams_buffer,
+                    this->ngram_delim);
+    insert_terms(this->ngrams_buffer);
+    this->dtm.increment_nrows();
     this->doc_count++;
   }
 
-  void insert_document_batch(const ListOf<const CharacterVector> docs_batch, int flag_grow_dtm ) {
+  void insert_document_batch(const ListOf<const CharacterVector> docs_batch ) {
     for (auto it:docs_batch) {
       checkUserInterrupt();
-      insert_document(it, flag_grow_dtm);
+      insert_document(it);
     }
   }
 
@@ -123,13 +126,12 @@ public:
 
 private:
   int verbose;
+
   // vocabulary
   unordered_map<string, uint32_t> vocab;
-  // Vocabulary vocabulary;
 
-  size_t cooc_token_count;
 
-  void init(CharacterVector vocab_R, uint32_t n_min, uint32_t n_max) {
+  void init(const CharacterVector vocab_R, uint32_t n_min, uint32_t n_max, const CharacterVector stopwords_R) {
     //vocab2 = Vocabulary(n_min, n_max, delim);
     this->verbose = 0;
     this->nnz = 0;
@@ -141,16 +143,22 @@ private:
     // ngram concatenation delimiter
     this->ngram_delim = "_";
 
-    size_t vocab_size = vocab_R.size();
     size_t i = 0;
     // we know vocab size, so lets reserve buckets this number
     // and if we will lucky no rehash will needed
-    this->vocab.reserve(vocab_size);
-    //convert R vocab represenation to C++ represenation
+    this->vocab.reserve(vocab_R.size());
+    // convert R vocab represenation to C++ represenation
     // also fill terms in right order
     for (auto val:vocab_R) {
       //grow vocabulary
       this->vocab.insert(make_pair(as< string >(val), i));
+      // fill terms in order we add them in dctionary!
+      i++;
+    }
+    // same for stopwords
+    for (auto val:stopwords_R) {
+      //grow vocabulary
+      this->stopwords.insert(as< string >(val));
       // fill terms in order we add them in dctionary!
       i++;
     }

@@ -10,9 +10,9 @@
 
 <meta name="author" content="Dmitriy Selivanov" />
 
-<meta name="date" content="2016-01-10" />
+<meta name="date" content="2016-03-31" />
 
-<title>GloVe word embeddings.</title>
+<title>GloVe Word Embeddings</title>
 
 
 
@@ -52,24 +52,24 @@ code > span.er { color: #ff0000; font-weight: bold; }
 
 
 <div id="header">
-<h1 class="title">GloVe word embeddings.</h1>
+<h1 class="title">GloVe Word Embeddings</h1>
 <h4 class="author"><em>Dmitriy Selivanov</em></h4>
-<h4 class="date"><em>2016-01-10</em></h4>
+<h4 class="date"><em>2016-03-31</em></h4>
 </div>
 
 
 <div id="word-embeddings" class="section level1">
 <h1>Word embeddings</h1>
-<p>After Tomas Mikolov et al. released <a href="https://code.google.com/p/word2vec/">word2vec</a> tool, there was a boom of articles about words vector representations. One of the greatest is <a href="http://nlp.stanford.edu/projects/glove/">GloVe</a>, which did a big thing while explaining how such algorithms work and refolmulating word2vec optimizations as special kind of factoriazation for word cooccurences matrix.</p>
-<p>Here I will briefly introduce GloVe algorithm and show how to use its text2vec implementation.</p>
+<p>After Tomas Mikolov et al. released the <a href="https://code.google.com/p/word2vec/">word2vec</a> tool, there was a boom of articles about word vector representations. One of the best of these articles is Stanford’s <a href="http://nlp.stanford.edu/projects/glove/">GloVe: Global Vectors for Word Representation</a>, which did explained why such algorithms work and refolmulating word2vec optimizations as a special kind of factoriazation for word co-occurence matrices.</p>
+<p>Here I will briefly introduce the GloVe algorithm and show how to use its text2vec implementation.</p>
 </div>
-<div id="introduction-to-glove-algorithm" class="section level1">
-<h1>Introduction to GloVe algorithm</h1>
+<div id="introduction-to-the-glove-algorithm" class="section level1">
+<h1>Introduction to the GloVe algorithm</h1>
 <p>GloVe algorithm consists of following steps:</p>
 <ol style="list-style-type: decimal">
-<li>Collect word cooccurence statistics in a form of word coocurence matrix <span class="math">\(X\)</span>. Each element <span class="math">\(X_{ij}\)</span> of such matrix represents measure of how often <em>word i</em> appears in context of <em>word j</em>. Usually we scan our corpus in followinf manner: for each term we look for context terms withing some area - <em>window_size</em> before and <em>window_size</em> after. Also we give less weight for more distand words. Usually <span class="math">\[decay = 1/offset\]</span>.</li>
-<li>Define soft constraint for each word pair: <span class="math">\[w_i^Tw_j + b_i + b_j = log(X_{ij})\]</span> Here <span class="math">\(w_i\)</span> - vector for main word, <span class="math">\(w_j\)</span> - vector for context word, <span class="math">\(b_i\)</span>, <span class="math">\(b_j\)</span> - scalar biases for main and context words.</li>
-<li>Define cost function <span class="math">\[J = \sum_{i=1}^V \sum_{j=1}^V \; f(X_{ij}) ( w_i^T w_j + b_i + b_j - \log X_{ij})^2\]</span> Here <span class="math">\(f\)</span> is a weighting function which help us to prevent learning only from exremly common word pairs. GloVe authors choose following fucntion:</li>
+<li><p>Collect word cooccurence statistics in a form of word coocurence matrix <span class="math">\(X\)</span>. Each element <span class="math">\(X_{ij}\)</span> of such matrix represents measure of how often word <em>i</em> appears in context of word <em>j</em>. Usually we scan our corpus in the following manner: for each term we look for context terms withing some area, a <em>window_size</em> before and a <em>window_size</em> after. Also we give less weight for more distant words, usually using the formula <span class="math">\[decay = 1/offset\]</span>.</p></li>
+<li>Define soft constraints for each word pair: <span class="math">\[w_i^Tw_j + b_i + b_j = log(X_{ij})\]</span> Here <span class="math">\(w_i\)</span> - vector for the main word, <span class="math">\(w_j\)</span> - vector for the context word, <span class="math">\(b_i\)</span>, <span class="math">\(b_j\)</span> are scalar biases for the main and context words.</li>
+<li><p>Define a cost function <span class="math">\[J = \sum_{i=1}^V \sum_{j=1}^V \; f(X_{ij}) ( w_i^T w_j + b_i + b_j - \log X_{ij})^2\]</span> Here <span class="math">\(f\)</span> is a weighting function which help us to prevent learning only from extremely common word pairs. The GloVe authors choose the following fucntion:</p></li>
 </ol>
 <p><span class="math">\[
 f(X_{ij}) = 
@@ -79,47 +79,37 @@ f(X_{ij}) =
 \end{cases}
 \]</span></p>
 </div>
-<div id="canonical-example---linguistic-regularities" class="section level1">
-<h1>Canonical example - linguistic regularities</h1>
-<p>Now lets examine how it works. As commonly known word2vec word vectors capture many linguistic regularities. The most canonical example is following. If we will take word vectors for words <em>paris, france, italy</em> and perform following operation: <span class="math">\[vector('paris') - vector('france') + vector('italy')\]</span> resultiong vector will be close to <span class="math">\(vector('rome')\)</span>.</p>
-<p>Lets download some wikipedia data (same data used in ./demo-word.sh in word2vec):</p>
+<div id="canonical-example-linguistic-regularities" class="section level1">
+<h1>Canonical example: linguistic regularities</h1>
+<p>Now let’s examine how GloVe embeddings works. As commonly known, word2vec word vectors capture many linguistic regularities. To give the canonical example, if we take word vectors for the words “paris,” “france,” and “italy” and perform the following operation:</p>
+<p><span class="math">\[vector('paris') - vector('france') + vector('italy')\]</span></p>
+<p>the resulting vector will be close to the vector for “rome.”</p>
+<p>Let’s download the same Wikipedia data used as a demo by word2vec:</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(text2vec)
 <span class="kw">library</span>(readr)
 temp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
 <span class="kw">download.file</span>(<span class="st">'http://mattmahoney.net/dc/text8.zip'</span>, temp)
 wiki &lt;-<span class="st"> </span><span class="kw">read_lines</span>(<span class="kw">unz</span>(temp, <span class="st">&quot;text8&quot;</span>))
 <span class="kw">unlink</span>(temp)</code></pre>
-<p>In the next step we will create vocabulary - set of words for which we want to learn word vectors. Note, that all text2vec’s functions that operates on raw text data (<code>vocabulary</code>, <code>create_hash_corpus</code>, <code>create_vocab_corpus</code>) have streaming API and you should iterator over tokens as first argument for these functions.</p>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># create iterator over tokens</span>
-it &lt;-<span class="st"> </span><span class="kw">itoken</span>(wiki, 
-             <span class="co"># text is already pre-cleaned</span>
-             <span class="dt">preprocess_function =</span> identity, 
-             <span class="co"># all words are single whitespace separated</span>
-             <span class="dt">tokenizer =</span> function(x) <span class="kw">strsplit</span>(x, <span class="dt">split =</span> <span class="st">&quot; &quot;</span>, <span class="dt">fixed =</span> T))
-<span class="co"># create vocabulary. Terms will be unigrams (simple words).</span>
-vocab &lt;-<span class="st"> </span><span class="kw">vocabulary</span>(it, <span class="dt">ngram =</span> <span class="kw">c</span>(1L, 1L) )</code></pre>
-<p>These words should not be too rare. Fot example we will can’t obtain any meaningful word vector for word which we saw only once in entire corpus. Here we will take only words which appear at least 5 times. <em>text2vec</em> provides more options to filter vocabulary - see <code>?prune_vocabulary</code> function.</p>
-<pre class="sourceCode r"><code class="sourceCode r">vocab &lt;-<span class="st"> </span><span class="kw">prune_vocabulary</span>(vocab, <span class="dt">term_count_min =</span> <span class="dv">5</span>)</code></pre>
-<p>Now we have <code>71290</code> terms in vocalulary and ready to construct Term-Coocurence matrix (<em>tcm</em>).</p>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># as said above, we should provide iterator to create_vocab_corpus function</span>
-it &lt;-<span class="st"> </span><span class="kw">itoken</span>(wiki, 
-             <span class="co"># text is already pre-cleaned</span>
-             <span class="dt">preprocess_function =</span> identity, 
-             <span class="co"># all words are single whitespace separated</span>
-             <span class="dt">tokenizer =</span> function(x) <span class="kw">strsplit</span>(x, <span class="dt">split =</span> <span class="st">&quot; &quot;</span>, <span class="dt">fixed =</span> T))
-
-corpus &lt;-<span class="st"> </span><span class="kw">create_vocab_corpus</span>(it, 
-                              <span class="co"># use our filtered vocabulary</span>
-                              <span class="dt">vocabulary =</span> vocab,
-                              <span class="co"># don't create document-term matrix</span>
-                              <span class="dt">grow_dtm =</span> F,
-                              <span class="co"># use window of 5 for context words</span>
-                              <span class="dt">skip_grams_window =</span> 15L)
-
-<span class="co"># get term cooccurence matrix from instance of C++ corpus class</span>
-tcm &lt;-<span class="st"> </span><span class="kw">get_tcm</span>(corpus)</code></pre>
-<p>Now we have <em>tcm</em> matrix and can factorize it via GloVe algorithm.<br />text2vec uses parallel stochastic gradient descend algorithm. By default it use all cores on your machine, but you can specify number of core directly. For example for using 4 threads, call <code>RcppParallel::setThreadOptions(numThreads = 4)</code>.</p>
-<p>Finally lets fit our model (it can take several of minutes to fit!):</p>
+<p>In the next step we will create a vocabulary, a set of words for which we want to learn word vectors. Note, that all of text2vec’s functions which operate on raw text data (<code>create_vocabulary</code>, <code>create_corpus</code>, <code>create_dtm</code>, <code>create_tcm</code>) have a streaming API and you should iterate over tokens as the first argument for these functions.</p>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Create iterator over tokens</span>
+tokens &lt;-<span class="st"> </span><span class="kw">strsplit</span>(wiki, <span class="dt">split =</span> <span class="st">&quot; &quot;</span>, <span class="dt">fixed =</span> T)
+<span class="co"># Create vocabulary. Terms will be unigrams (simple words).</span>
+vocab &lt;-<span class="st"> </span><span class="kw">create_vocabulary</span>(<span class="kw">itoken</span>(tokens))</code></pre>
+<p>These words should not be too rare. Fot example we cannot calculate a meaningful word vector for a word which we saw only once in the entire corpus. Here we will take only words which appear at least 5 times. <em>text2vec</em> provides more options to filter vocabulary (see <code>?prune_vocabulary</code>).</p>
+<pre class="sourceCode r"><code class="sourceCode r">vocab &lt;-<span class="st"> </span><span class="kw">prune_vocabulary</span>(vocab, <span class="dt">term_count_min =</span> 5L)</code></pre>
+<p>Now we have 71,290 terms in the vocabulary and are ready to construct term-co-occurence matrix (TCM).</p>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># We provide an iterator to create_vocab_corpus function</span>
+it &lt;-<span class="st"> </span><span class="kw">itoken</span>(tokens)
+<span class="co"># Use our filtered vocabulary</span>
+vectorizer &lt;-<span class="st"> </span><span class="kw">vocab_vectorizer</span>(vocab, 
+                               <span class="co"># don't vectorize input</span>
+                               <span class="dt">grow_dtm =</span> <span class="ot">FALSE</span>, 
+                               <span class="co"># use window of 5 for context words</span>
+                               <span class="dt">skip_grams_window =</span> 5L)
+tcm &lt;-<span class="st"> </span><span class="kw">create_tcm</span>(it, vectorizer)</code></pre>
+<p>Now we have a TCM matrix and can factorize it via the GloVe algorithm.<br />text2vec uses a parallel stochastic gradient descend algorithm. By default it use all cores on your machine, but you can specify the number of cores if you wish. For example, to use 4 threads, call <code>RcppParallel::setThreadOptions(numThreads = 4)</code>.</p>
+<p>Let’s fit our model. (It can take several of minutes to fit!)</p>
 <pre class="sourceCode r"><code class="sourceCode r">fit &lt;-<span class="st"> </span><span class="kw">glove</span>(<span class="dt">tcm =</span> tcm,
              <span class="dt">word_vectors_size =</span> <span class="dv">50</span>,
              <span class="dt">x_max =</span> <span class="dv">10</span>, <span class="dt">learning_rate =</span> <span class="fl">0.2</span>,
@@ -127,23 +117,23 @@ tcm &lt;-<span class="st"> </span><span class="kw">get_tcm</span>(corpus)</code>
 <blockquote>
 <p>2016-01-10 14:12:37 - epoch 1, expected cost 0.0662<br />2016-01-10 14:12:51 - epoch 2, expected cost 0.0472<br />2016-01-10 14:13:06 - epoch 3, expected cost 0.0429<br />2016-01-10 14:13:21 - epoch 4, expected cost 0.0406<br />2016-01-10 14:13:36 - epoch 5, expected cost 0.0391<br />2016-01-10 14:13:50 - epoch 6, expected cost 0.0381<br />2016-01-10 14:14:05 - epoch 7, expected cost 0.0373<br />2016-01-10 14:14:19 - epoch 8, expected cost 0.0366<br />2016-01-10 14:14:33 - epoch 9, expected cost 0.0362<br />2016-01-10 14:14:47 - epoch 10, expected cost 0.0358<br />2016-01-10 14:15:01 - epoch 11, expected cost 0.0355<br />2016-01-10 14:15:16 - epoch 12, expected cost 0.0351<br />2016-01-10 14:15:30 - epoch 13, expected cost 0.0349<br />2016-01-10 14:15:44 - epoch 14, expected cost 0.0347<br />2016-01-10 14:15:59 - epoch 15, expected cost 0.0345</p>
 </blockquote>
-<p>And obtain word vectors</p>
+<p>And now we get the word vectors:</p>
 <pre class="sourceCode r"><code class="sourceCode r">word_vectors &lt;-<span class="st"> </span>fit$word_vectors[[<span class="dv">1</span>]] +<span class="st"> </span>fit$word_vectors[[<span class="dv">2</span>]]
 <span class="kw">rownames</span>(word_vectors) &lt;-<span class="st"> </span><span class="kw">rownames</span>(tcm)</code></pre>
-<p>Find closest word vectors for our <em>paris - france + italy</em> example:</p>
-<pre class="sourceCode r"><code class="sourceCode r">word_vectors_norm &lt;-<span class="st">  </span><span class="kw">sqrt</span>(<span class="kw">rowSums</span>(word_vectors ^<span class="st"> </span><span class="dv">2</span>))
+<p>We can find the closest word vectors for our <em>paris - france + italy</em> example:</p>
+<pre class="sourceCode r"><code class="sourceCode r">word_vectors_norm &lt;-<span class="st"> </span><span class="kw">sqrt</span>(<span class="kw">rowSums</span>(word_vectors ^<span class="st"> </span><span class="dv">2</span>))
 
-rome &lt;-<span class="st"> </span>word_vectors[<span class="st">'paris'</span>, , drop =<span class="st"> </span>F] -<span class="st"> </span>
-<span class="st">  </span>word_vectors[<span class="st">'france'</span>, , drop =<span class="st"> </span>F] +<span class="st"> </span>
-<span class="st">  </span>word_vectors[<span class="st">'italy'</span>, , drop =<span class="st"> </span>F]
+rome &lt;-<span class="st"> </span>word_vectors[<span class="st">'paris'</span>, , drop =<span class="st"> </span><span class="ot">FALSE</span>] -<span class="st"> </span>
+<span class="st">  </span>word_vectors[<span class="st">'france'</span>, , drop =<span class="st"> </span><span class="ot">FALSE</span>] +<span class="st"> </span>
+<span class="st">  </span>word_vectors[<span class="st">'italy'</span>, , drop =<span class="st"> </span><span class="ot">FALSE</span>]
 
 cos_dist &lt;-<span class="st"> </span>text2vec:::<span class="kw">cosine</span>(rome, 
                               word_vectors, 
                               word_vectors_norm)
-<span class="kw">head</span>(<span class="kw">sort</span>(cos_dist[<span class="dv">1</span>,], <span class="dt">decreasing =</span> T), <span class="dv">5</span>)
-##    paris    venice     genoa      rome  florence
-##0.7811252 0.7763088 0.7048109 0.6696540 0.6580989</code></pre>
-<p>You can achieve <strong>much</strong> better results by experimenting with <code>skip_grams_window</code> and parameters of <code>glove()</code> function (word vectors size, number of iterations, etc.). For more details and large-scale experiments on wikipedia data see this <a href="http://dsnotes.com/blog/text2vec/2015/12/01/glove-enwiki/">post</a> in my blog.</p>
+<span class="kw">head</span>(<span class="kw">sort</span>(cos_dist[<span class="dv">1</span>,], <span class="dt">decreasing =</span> T), <span class="dv">10</span>)
+##     paris    venice     genoa      rome  florence
+## 0.7811252 0.7763088 0.7048109 0.6696540 0.6580989</code></pre>
+<p>You can achieve <strong>much</strong> better results by experimenting with <code>skip_grams_window</code> and the parameters of the <code>glove()</code> function (including word vectors size and the number of iterations). For more details and large-scale experiments on wikipedia data see this <a href="http://dsnotes.com/blog/text2vec/2015/12/01/glove-enwiki/">post</a> on my blog.</p>
 </div>
 
 

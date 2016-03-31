@@ -1,154 +1,123 @@
-## ---- loading-data, eval=TRUE--------------------------------------------
+## ---- echo=FALSE--------------------------------------------------------------
+op <- options(width = 80, str = strOptions(strict.width = "cut"))
+
+## ---- loading-data, eval=TRUE-------------------------------------------------
 library(text2vec)
 data("movie_review")
 set.seed(42L)
 
-## ---- vocab-iterator, eval=TRUE------------------------------------------
-it <- itoken(movie_review[['review']], preprocess_function = tolower, 
-             tokenizer = word_tokenizer, chunks_number = 10, progessbar = F)
-# using unigrams here
-t1 <- Sys.time()
-vocab <- vocabulary(src = it, ngram = c(1L, 1L))
-print( difftime( Sys.time(), t1, units = 'sec'))
+## ---- vocab-iterator, eval=TRUE-----------------------------------------------
+it <- itoken(movie_review$review, 
+             preprocess_function = tolower, 
+             tokenizer = word_tokenizer, 
+             ids = movie_review$id)
 
-## ---- vocab_dtm_1, eval=TRUE---------------------------------------------
-it <- itoken(movie_review[['review']], preprocess_function = tolower, 
-             tokenizer = word_tokenizer, chunks_number = 10, progessbar = F)
-corpus <- create_vocab_corpus(it, vocabulary = vocab)
-dtm <- get_dtm(corpus)
+sw <- c("i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours")
+vocab <- create_vocabulary(it, stopwords = sw)
 
-## ---- vocab_dtm_1_dim, eval=TRUE-----------------------------------------
-dim(dtm)
+## -----------------------------------------------------------------------------
+# Each element of list represents document
+tokens <- movie_review$review %>% 
+  tolower() %>% 
+  word_tokenizer()
+it <- itoken(tokens, ids = movie_review$id)
+vocab <- create_vocabulary(it, stopwords = sw)
 
-## ---- fit_1, message=FALSE, warning=FALSE, eval=TRUE---------------------
+## ---- vocab_dtm_1, eval=TRUE--------------------------------------------------
+it <- itoken(tokens, ids = movie_review$id)
+# Or
+# it <- itoken(movie_review$review, tolower, word_tokenizer, ids = movie_review$id)
+vectorizer <- vocab_vectorizer(vocab)
+dtm <- create_dtm(it, vectorizer)
+
+## ---- vocab_dtm_1_dim, eval=TRUE----------------------------------------------
+str(dtm)
+identical(rownames(dtm), movie_review$id)
+
+## ---- fit_1, message=FALSE, warning=FALSE, eval=TRUE--------------------------
 library(glmnet)
-t1 <- Sys.time()
 fit <- cv.glmnet(x = dtm, y = movie_review[['sentiment']], 
                  family = 'binomial', 
                  # lasso penalty
                  alpha = 1,
-                 # interested area unded ROC curve
+                 # interested in the area under ROC curve
                  type.measure = "auc",
                  # 5-fold cross-validation
                  nfolds = 5,
-                 # high value, less accurate, but faster training
+                 # high value is less accurate, but has faster training
                  thresh = 1e-3,
-                 # again lower number iterations for faster training
-                 # in this vignette
+                 # again lower number of iterations for faster training
                  maxit = 1e3)
-print( difftime( Sys.time(), t1, units = 'sec'))
 plot(fit)
-print (paste("max AUC = ", round(max(fit$cvm), 4)))
+print(paste("max AUC =", round(max(fit$cvm), 4)))
 
-## ---- prune_vocab_dtm_1--------------------------------------------------
-# remove very common and uncommon words
+## ---- prune_vocab_dtm_1-------------------------------------------------------
 pruned_vocab <- prune_vocabulary(vocab, term_count_min = 10,
  doc_proportion_max = 0.5, doc_proportion_min = 0.001)
-
-it <- itoken(movie_review[['review']], preprocess_function = tolower, 
-             tokenizer = word_tokenizer, chunks_number = 10, progessbar = F)
-corpus <- create_vocab_corpus(it, vocabulary = pruned_vocab)
-dtm <- get_dtm(corpus)
-
-## ---- tfidf_dtm_1--------------------------------------------------------
-dtm <- dtm %>% tfidf_transformer
+it <- itoken(tokens, ids = movie_review$id)
+vectorizer <- vocab_vectorizer(pruned_vocab)
+dtm <- create_dtm(it, vectorizer)
 dim(dtm)
 
-## ---- fit_2, message=FALSE, warning=FALSE, eval=TRUE---------------------
+## ---- tfidf_dtm_1-------------------------------------------------------------
+dtm <- dtm %>% transform_tfidf()
+
+## ---- fit_2, message=FALSE, warning=FALSE, eval=TRUE--------------------------
 t1 <- Sys.time()
 fit <- cv.glmnet(x = dtm, y = movie_review[['sentiment']], 
                  family = 'binomial', 
-                 # lasso penalty
                  alpha = 1,
-                 # interested area unded ROC curve
                  type.measure = "auc",
-                 # 5-fold cross-validation
                  nfolds = 5,
-                 # high value, less accurate, but faster training
                  thresh = 1e-3,
-                 # again lower number iterations for faster training
-                 # in this vignette
                  maxit = 1e3)
-print( difftime( Sys.time(), t1, units = 'sec'))
+print(difftime(Sys.time(), t1, units = 'sec'))
 plot(fit)
-print (paste("max AUC = ", round(max(fit$cvm), 4)))
+print(paste("max AUC =", round(max(fit$cvm), 4)))
 
-## ---- ngram_dtm_1--------------------------------------------------------
-it <- itoken(movie_review[['review']], preprocess_function = tolower, 
-             tokenizer = word_tokenizer, chunks_number = 10, progessbar = F)
+## ---- ngram_dtm_1-------------------------------------------------------------
+it <- itoken(tokens, ids = movie_review$id)
 
-t1 <- Sys.time()
-vocab <- vocabulary(src = it, ngram = c(1L, 3L))
+vocab <- create_vocabulary(it, ngram = c(1L, 3L)) %>% 
+  prune_vocabulary(term_count_min = 10, 
+                   doc_proportion_max = 0.5, 
+                   doc_proportion_min = 0.001)
 
-print( difftime( Sys.time(), t1, units = 'sec'))
+vectorizer <- vocab_vectorizer(vocab)
 
-vocab <- vocab %>% 
-  prune_vocabulary(term_count_min = 10, doc_proportion_max = 0.5, doc_proportion_min = 0.001)
-
-it <- itoken(movie_review[['review']], preprocess_function = tolower, 
-             tokenizer = word_tokenizer, chunks_number = 10, progessbar = F)
-
-corpus <- create_vocab_corpus(it, vocabulary = vocab)
-
-print( difftime( Sys.time(), t1, units = 'sec'))
-
-dtm <- corpus %>% 
-  get_dtm %>% 
-  tfidf_transformer
-
+dtm <- tokens %>% 
+  itoken() %>% 
+  create_dtm(vectorizer) %>% 
+  transform_tfidf()
 
 dim(dtm)
 
-t1 <- Sys.time()
 fit <- cv.glmnet(x = dtm, y = movie_review[['sentiment']], 
                  family = 'binomial', 
-                 # lasso penalty
                  alpha = 1,
-                 # interested area unded ROC curve
                  type.measure = "auc",
-                 # 5-fold cross-validation
                  nfolds = 5,
-                 # high value, less accurate, but faster training
                  thresh = 1e-3,
-                 # again lower number iterations for faster training
-                 # in this vignette
                  maxit = 1e3)
-print( difftime( Sys.time(), t1, units = 'sec'))
+
 plot(fit)
-print (paste("max AUC = ", round(max(fit$cvm), 4)))
+print(paste("max AUC =", round(max(fit$cvm), 4)))
 
-## ---- hash_dtm-----------------------------------------------------------
-t1 <- Sys.time()
+## ---- hash_dtm----------------------------------------------------------------
+it <- itoken(tokens, ids = movie_review$id)
 
-it <- itoken(movie_review[['review']], preprocess_function = tolower, 
-             tokenizer = word_tokenizer, chunks_number = 10, progessbar = F)
+vectorizer <- hash_vectorizer(hash_size = 2 ^ 16, ngram = c(1L, 3L))
+dtm <- create_dtm(it, vectorizer) %>% 
+  transform_tfidf()
 
-fh <- feature_hasher(hash_size = 2**16, ngram = c(1L, 3L))
-
-corpus <- create_hash_corpus(it, feature_hasher = fh)
-print( difftime( Sys.time(), t1, units = 'sec'))
-
-dtm <- corpus %>% 
-  get_dtm %>% 
-  tfidf_transformer
-
-dim(dtm)
-
-t1 <- Sys.time()
 fit <- cv.glmnet(x = dtm, y = movie_review[['sentiment']], 
                  family = 'binomial', 
-                 # lasso penalty
                  alpha = 1,
-                 # interested area unded ROC curve
                  type.measure = "auc",
-                 # 5-fold cross-validation
                  nfolds = 5,
-                 # high value, less accurate, but faster training
                  thresh = 1e-3,
-                 # again lower number iterations for faster training
-                 # in this vignette
                  maxit = 1e3)
-print( difftime( Sys.time(), t1, units = 'sec'))
+
 plot(fit)
-print (paste("max AUC = ", round(max(fit$cvm), 4)))
+print(paste("max AUC =", round(max(fit$cvm), 4)))
 

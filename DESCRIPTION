@@ -1,32 +1,35 @@
 Package: text2vec
 Type: Package
-Version: 0.2.0
-Date: 2016-01-10
-Title: Fast and Modern Text Mining Framework - Vectorization and Word
-        Embeddings
+Version: 0.3.0
+Date: 2016-03-31
+Title: Fast Text Mining Framework for Vectorization and Word Embeddings
 License: MIT + file LICENSE
 Description: Very fast and memory-friendly tools for text vectorization and
-    learning word embeddings (GloVe). Also package provides source-agnostic
-    streaming API, which allows to perform analysis of collections
-    of documents, which are much larger the available RAM.
-Authors@R: person("Dmitriy", "Selivanov", role = c("aut", "cre"),
-    email = "selivanov.dmitriy@gmail.com")
+    state-of-the-art word embeddings (GloVe). This package provides a
+    source-agnostic streaming API, which allows researchers to perform analysis
+    of collections of documents which are much larger than available RAM. All
+    core functions are parallelized to benefit from multicore machines.
+Authors@R: c(person("Dmitriy", "Selivanov", role = c("aut", "cre"),
+    email = "selivanov.dmitriy@gmail.com"),
+    person("Lincoln", "Mullen", role = c("ctb"),
+    email = "lincoln@lincolnmullen.com"))
 Maintainer: Dmitriy Selivanov <selivanov.dmitriy@gmail.com>
 Encoding: UTF-8
 SystemRequirements: GNU make, C++11
 Depends: R (>= 3.2.0), methods
 Imports: Matrix (>= 1.1), Rcpp (>= 0.11), RcppParallel (>= 4.3.14),
-        digest (>= 0.6.8), magrittr (>= 1.5), stringr (>= 1.0.0),
-        iterators (>= 1.0.8), readr(>= 0.2.2)
+        digest (>= 0.6.8), iterators (>= 1.0.8), foreach(>= 1.4.3),
+        data.table(>= 1.9.6), stringr (>= 1.0.0), magrittr (>= 1.5)
 LinkingTo: Rcpp, RcppParallel, digest
-Suggests: testthat, knitr, rmarkdown, glmnet
+Suggests: testthat, knitr, rmarkdown, glmnet, parallel
 URL: https://github.com/dselivanov/text2vec
 BugReports: https://github.com/dselivanov/text2vec/issues
 VignetteBuilder: knitr
 LazyData: true
 RoxygenNote: 5.0.1
 NeedsCompilation: yes
-Packaged: 2016-01-10 17:08:29 UTC; dmitryselivanov
-Author: Dmitriy Selivanov [aut, cre]
+Packaged: 2016-03-31 18:58:07 UTC; dmitryselivanov
+Author: Dmitriy Selivanov [aut, cre],
+  Lincoln Mullen [ctb]
 Repository: CRAN
-Date/Publication: 2016-01-10 18:38:23
+Date/Publication: 2016-03-31 21:12:51
