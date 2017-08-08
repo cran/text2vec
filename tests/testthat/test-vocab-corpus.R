@@ -3,21 +3,20 @@ context("vocabulary-corpus construction")
 train_ind = 1:1000
 ids = movie_review$id[train_ind]
 
-txt = movie_review[['review']][train_ind] %>%
-  tolower
+txt = tolower(movie_review[['review']][train_ind])
 names(txt) = ids
 
 tokens = word_tokenizer(txt)
 
-it = itoken(tokens, progressbar = F, ids = ids)
+it = itoken(tokens, progressbar = FALSE, ids = ids)
 
 test_that("Vocabulary pruning", {
   vocab = create_vocabulary(it)
   # Vocabulary stats
-  expect_equal(length(vocab$vocab$terms), 18402)
-  expect_equal( vocab$vocab$terms[ which.max(vocab$vocab$doc_counts) ], 'the')
-  expect_equal( max(vocab$vocab$doc_counts), 992)
-  expect_equal( max(vocab$vocab$terms_counts), 13252)
+  expect_equal(length(vocab$term), 18402)
+  expect_equal( vocab$term[ which.max(vocab$doc_count) ], 'the')
+  expect_equal( max(vocab$doc_count), 992)
+  expect_equal( max(vocab$term_count), 13252)
 
   COUNT_MAX = 5000L
   COUNT_MIN = 20L
@@ -29,56 +28,61 @@ test_that("Vocabulary pruning", {
                               term_count_max = COUNT_MAX,
                               doc_proportion_min = PROP_MIN,
                               doc_proportion_max = PROP_MAX,
-                              max_number_of_terms = Inf
+                             vocab_term_max = Inf
                               )
   # same number of underlying documents
   expect_identical(p_vocab$document_count, vocab$document_count)
   # same ngrams
   expect_identical(p_vocab$ngram, p_vocab$ngram)
   # number of terms in prunned vocab
-  expect_equal(nrow(p_vocab$vocab), 429L)
+  expect_equal(nrow(p_vocab), 429L)
+
+  doc_count_min = 10L
+  doc_count_max = 100L
+  p_vocab = prune_vocabulary(vocab,
+                             doc_count_min = doc_count_min,
+                             doc_count_max = doc_count_max)
+  expect_true( all(p_vocab$doc_count <= doc_count_max))
+  expect_true( all(p_vocab$doc_count >= doc_count_min))
 
   PROP_MAX = 0.05
   LIMIT = 20L
   p_vocab = prune_vocabulary(vocab,
                               doc_proportion_max = PROP_MAX,
-                              max_number_of_terms = LIMIT)
+                             vocab_term_max = LIMIT)
 
-  expect_equal( nrow(p_vocab$vocab), LIMIT)
-  expect_true( all(p_vocab$vocab$doc_proportions <= PROP_MAX))
+  expect_equal( nrow(p_vocab), LIMIT)
+  expect_true( all(p_vocab$doc_proportions <= PROP_MAX))
 
   # test for https://github.com/dselivanov/text2vec/issues/46
   vectorizer = vocab_vectorizer(p_vocab)
-  vcorpus = create_corpus(it, vectorizer)
 
-  dtm = get_dtm(vcorpus)
+  dtm = create_dtm(it, vectorizer)
   # check we keep names for input. see #51
   expect_equal(rownames(dtm), ids)
   expect_identical(dim(dtm), c(length(txt), LIMIT))
 
   # check we keep names for input. see #51
-  dtm_lda_c = get_dtm(vcorpus, 'lda_c')
+  dtm_lda_c = as.lda_c(dtm)
   expect_equal(names(dtm_lda_c), ids)
 })
 
 test_that("Vocabulary stopwords", {
   STOP_WORDS = c('is', 'in', 'it')
-  vocab = create_vocabulary(it)
+  vocab = create_vocabulary(it, stopwords = STOP_WORDS)
   # check removed stop words
-  expect_false(any(STOP_WORDS %in% vocab$terms))
+  expect_false(any(STOP_WORDS %in% vocab$term))
 })
 
 test_that("Unigran Vocabulary Corpus construction", {
   # Vocabulary construction
   vocab = create_vocabulary(it)
-  # VocabCorpus construction
   vectorizer = vocab_vectorizer(vocab)
-  vcorpus = create_corpus(it, vectorizer)
 
   # dtm
-  m = vcorpus$get_dtm()
+  m = create_dtm(it, vectorizer)
   expect_equal( dim(m)[[1]], length(train_ind))
-  expect_equal( dim(m)[[2]], length(vocab$vocab$terms))
+  expect_equal( dim(m)[[2]], length(vocab$term))
   expect_equal( length(m@x), 141876L)
 
   # check classification accuracy
@@ -97,16 +101,15 @@ test_that("bi-gram Vocabulary Corpus construction", {
                       ngram = c('ngram_min' = 2L,
                                 'ngram_max' = 2L))
 
-  expect_equal(sum(grepl("_", vocab$vocab$terms, fixed = T)), 120070L)
-  expect_equal(length(vocab$vocab$terms), 120070L)
-  # VocabCorpus construction
+  expect_equal(sum(grepl("_", vocab$term, fixed = T)), 120070L)
+  expect_equal(length(vocab$term), 120070L)
+
   vectorizer = vocab_vectorizer(vocab)
-  vcorpus = create_corpus(it, vectorizer)
 
   # dtm
-  m = vcorpus$get_dtm()
+  m = create_dtm(it, vectorizer)
   expect_equal( dim(m)[[1]], length(train_ind))
-  expect_equal( dim(m)[[2]], length(vocab$vocab$terms))
+  expect_equal( dim(m)[[2]], length(vocab$term))
   expect_equal( length(m@x), 223579L)
 })
 
@@ -115,14 +118,13 @@ test_that("Unigram + Bigram Vocabulary Corpus construction", {
   vocab = create_vocabulary(it,
                       ngram = c('ngram_min' = 1L,
                                 'ngram_max' = 2L))
-  expect_equal(length(vocab$vocab$terms), 138472L)
-  # VocabCorpus construction
+  expect_equal(length(vocab$term), 138472L)
+
   vectorizer = vocab_vectorizer(vocab)
-  vcorpus = create_corpus(it, vectorizer)
   # dtm
-  m = vcorpus$get_dtm()
+  m = create_dtm(it, vectorizer)
   expect_equal( dim(m)[[1]], length(train_ind))
-  expect_equal( dim(m)[[2]], length(vocab$vocab$terms))
+  expect_equal( dim(m)[[2]], length(vocab$term))
   expect_equal( length(m@x), 365455L)
 })
 

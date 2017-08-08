@@ -2,8 +2,8 @@
 % Please edit documentation in R/distance_RWMD.R
 \docType{data}
 \name{RelaxedWordMoversDistance}
-\alias{RWMD}
 \alias{RelaxedWordMoversDistance}
+\alias{RWMD}
 \title{Creates model which can be used for calculation of "relaxed word movers distance".}
 \format{\code{\link{R6Class}} object.}
 \usage{
@@ -13,20 +13,20 @@ RWMD
 }
 \description{
 Relaxed word movers distance tries to measure distance between documents by
-calculating how hard is to transofrm words from first document into words from second document
+calculating how hard is to transform words from first document into words from second document
 and vice versa. For more detail see original article: \url{http://mkusner.github.io/publications/WMD.pdf}.
 }
 \section{Fields}{
 
 \describe{
-\item{\code{verbose}}{\code{logical = TRUE} whether to display
-additional inforamtion during calculations.}
+\item{\code{progressbar}}{\code{logical = TRUE} whether to display progressbar}
 }}
+
 \section{Usage}{
 
 For usage details see \bold{Methods, Arguments and Examples} sections.
 \preformatted{
-rwmd = RelaxedWordMoversDistance$new(wv, method = c("cosine", "euclidean"))
+rwmd = RelaxedWordMoversDistance$new(wv, method = c("cosine", "euclidean"), normalize = TRUE, progressbar = interactive())
 rwmd$dist2(x, y)
 rwmd$pdist2(x, y)
 }
@@ -59,6 +59,7 @@ rwmd$pdist2(x, y)
                This means \code{distance = 1 - cosine_angle_betwen_wv}}
 }
 }
+
 \examples{
 \dontrun{
 data("movie_review")
@@ -67,14 +68,17 @@ tokens = movie_review$review \%>\%
   word_tokenizer
 v = create_vocabulary(itoken(tokens)) \%>\%
   prune_vocabulary(term_count_min = 5, doc_proportion_max = 0.5)
-corpus = create_corpus(itoken(tokens), vocab_vectorizer(v, skip_grams_window = 5))
-dtm = get_dtm(corpus)
-tcm = get_tcm(corpus)
+it = itoken(tokens)
+vectorizer = vocab_vectorizer(v)
+dtm = create_dtm(it, vectorizer)
+tcm = create_tcm(it, vectorizer, skip_grams_window = 5)
 glove_model = GloVe$new(word_vectors_size = 50, vocabulary = v, x_max = 10)
-wv = glove_model$fit(tcm, n_iter = 10)
-rwmd_model = RWMD(wv)
-rwmd_dist = dist2(dtm[1:10, ], dtm[1:100, ], method = rwmd_model, norm = 'none')
+wv = glove_model$fit_transform(tcm, n_iter = 10)
+# get average of main and context vectors as proposed in GloVe paper
+wv = wv + t(glove_model$components)
+rwmd_model = RWMD$new(wv)
+rwmd_dist = dist2(dtm[1:100, ], dtm[1:10, ], method = rwmd_model, norm = 'none')
+head(rwmd_dist)
 }
 }
 \keyword{datasets}
-

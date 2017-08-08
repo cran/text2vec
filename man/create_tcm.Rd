@@ -3,15 +3,20 @@
 \name{create_tcm}
 \alias{create_tcm}
 \alias{create_tcm.itoken}
-\alias{create_tcm.list}
+\alias{create_tcm.itoken_parallel}
 \title{Term-co-occurence matrix construction}
 \usage{
-create_tcm(it, vectorizer, ...)
+create_tcm(it, vectorizer, skip_grams_window = 5L,
+  skip_grams_window_context = c("symmetric", "right", "left"),
+  weights = 1/seq_len(skip_grams_window), ...)
 
-\method{create_tcm}{itoken}(it, vectorizer, ...)
+\method{create_tcm}{itoken}(it, vectorizer, skip_grams_window = 5L,
+  skip_grams_window_context = c("symmetric", "right", "left"),
+  weights = 1/seq_len(skip_grams_window), ...)
 
-\method{create_tcm}{list}(it, vectorizer, verbose = FALSE,
-  work_dir = tempdir(), ...)
+\method{create_tcm}{itoken_parallel}(it, vectorizer, skip_grams_window = 5L,
+  skip_grams_window_context = c("symmetric", "right", "left"),
+  weights = 1/seq_len(skip_grams_window), ...)
 }
 \arguments{
 \item{it}{\code{list} of iterators over tokens from \link{itoken}.
@@ -21,12 +26,21 @@ strings.}
 \item{vectorizer}{\code{function} vectorizer function. See
 \link{vectorizers}.}
 
+\item{skip_grams_window}{\code{integer} window for term-co-occurence matrix
+construction. \code{skip_grams_window} should be > 0 if you plan to use
+\code{vectorizer} in \link{create_tcm} function.
+Value of \code{0L} means to not construct the TCM.}
+
+\item{skip_grams_window_context}{one of \code{c("symmetric", "right", "left")} -
+which context words to use when count co-occurence statistics.}
+
+\item{weights}{weights for context/distant words during co-occurence statistics calculation.
+By default we are setting \code{weight = 1 / distance_from_current_word}.
+Should have length equal to skip_grams_window.
+\code{"symmetric"} by default - take into account \code{skip_grams_window} left and right.}
+
 \item{...}{arguments to \link{foreach} function which is used to iterate over
 \code{it}.}
-
-\item{verbose}{\code{logical} print status messages}
-
-\item{work_dir}{working directory for intermediate results}
 }
 \value{
 \code{dgTMatrix} TCM matrix
@@ -36,7 +50,7 @@ This is a function for constructing a
 term-co-occurrence matrix(TCM). TCM matrix usually used with \link{GloVe} word embedding model.
 }
 \details{
-If a parallel backend is registered, it will onstruct the TCM in multiple threads.
+If a parallel backend is registered, it will construct the TCM in multiple threads.
 The user should keep in mind that he/she should split data and provide a list
 of \link{itoken} iterators. Each element of \code{it} will be handled
 in a separate thread combined at the end of processing.
@@ -50,23 +64,23 @@ data("movie_review")
 tokens = movie_review$review \%>\% tolower \%>\% word_tokenizer
 it = itoken(tokens)
 v = create_vocabulary(jobs)
-vectorizer = vocab_vectorizer(v, grow_dtm = FALSE, skip_grams_window = 3L)
-tcm = create_tcm(itoken(tokens), vectorizer)
+vectorizer = vocab_vectorizer(v)
+tcm = create_tcm(itoken(tokens), vectorizer, skip_grams_window = 3L)
 
 # parallel version
 
 # set to number of cores on your machine
 N_WORKERS = 1
+if(require(doParallel)) registerDoParallel(N_WORKERS)
 splits = split_into(movie_review$review, N_WORKERS)
 jobs = lapply(splits, itoken, tolower, word_tokenizer)
 v = create_vocabulary(jobs)
-vectorizer = vocab_vectorizer(v, grow_dtm = FALSE, skip_grams_window = 3L)
+vectorizer = vocab_vectorizer(v)
 jobs = lapply(splits, itoken, tolower, word_tokenizer)
-doParallel::registerDoParallel(N_WORKERS)
-tcm = create_tcm(jobs, vectorizer)
+
+tcm = create_tcm(jobs, vectorizer, skip_grams_window = 3L, skip_grams_window_context = "symmetric")
 }
 }
 \seealso{
 \link{itoken} \link{create_dtm}
 }
-

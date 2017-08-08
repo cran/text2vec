@@ -18,6 +18,21 @@
 using namespace Rcpp;
 using namespace std;
 
+// fast integer hashing
+uint32_t fast_int_hash(uint32_t a) {
+  a = ((a >> 16) ^ a) * 0x45d9f3b;
+  a = ((a >> 16) ^ a) * 0x45d9f3b;
+  a = ((a >> 16) ^ a);
+  return a;
+}
+
+// checks if external pointer invalid
+// [[Rcpp::export]]
+int is_invalid_ptr(SEXP sexp_ptr) {
+  Rcpp::XPtr<SEXP> ptr(sexp_ptr);
+  return (ptr.get() == NULL);
+}
+
 // Get current date/time, format is YYYY-MM-DD HH:mm:ss
 const std::string currentDateTime() {
   time_t     now = time(0);
@@ -30,63 +45,35 @@ const std::string currentDateTime() {
   return buf;
 }
 
-NumericMatrix convert2Rmat(vector<vector<float> > &mat, size_t ncol) {
-  NumericMatrix res(mat.size(), ncol);
-  for (size_t i = 0; i < mat.size(); i++)
-    for (size_t j = 0; j < ncol; j++)
-      res(i, j) = mat[i][j];
-  return res;
+std::vector<std::string> charvec2stdvec(CharacterVector terms_raw) {
+  std::vector<std::string> result;
+  result.reserve(terms_raw.size());
+  for (auto it: terms_raw) {
+    result.push_back(as<string>(it));
+  }
+  return(result);
 }
 
-void fill_mat_val(vector<vector<float> > &mat, size_t ncol, float val) {
-  for (size_t i = 0; i < mat.size(); i++)
-    for (size_t j = 0; j < ncol; j++)
-      mat[i][j] = val;
-}
-void fill_mat_rand(vector<vector<float> > &mat, size_t ncol, float runif_min, float runif_max) {
-  for (size_t i = 0; i < mat.size(); i++)
-    for (size_t j = 0; j < ncol; j++)
-      mat[i][j] = R::runif(runif_min, runif_max); //(double)rand() / (double)RAND_MAX - 0.5;
-}
-
-void fill_vec_rand(vector<float>  &vec, float runif_min, float runif_max) {
-  for (size_t i = 0; i < vec.size(); i++)
-    vec[i] = R::runif(runif_min, runif_max); //(double)rand() / (double)RAND_MAX - 0.5;
-}
-
-void fill_vec_val(vector<float>  &vec, float val) {
-  for (size_t i = 0; i < vec.size(); i++)
-    vec[i] = val;
-}
-
-void generate_ngrams(CharacterVector terms_raw,
+vector<string> generate_ngrams(const std::vector< std::string> &terms,
                                const uint32_t ngram_min,
                                const uint32_t ngram_max,
-                               RCPP_UNORDERED_SET<string> &stopwords,
-                               // pass buffer by reference to avoid memory allocation
-                               // on each iteration
-                               vector<string> &terms_filtered_buffer,
-                               vector<string> &ngrams,
+                               unordered_set<string> &stopwords,
                                const string ngram_delim) {
-  // clear buffers from previous iteration
-  terms_filtered_buffer.clear();
-  ngrams.clear();
+  uint32_t len = terms.size();
+  vector<string> ngrams;
+  vector<string> terms_filtered;
+  terms_filtered.reserve(len);
+  ngrams.reserve(len);
 
-  string term;
-  // filter out stopwords
-  for (auto it: terms_raw) {
-    term = as<string>(it);
-    if(stopwords.find(term) == stopwords.end())
-      terms_filtered_buffer.push_back(term);
+  for (auto it: terms) {
+    if(stopwords.find(it) == stopwords.end())
+      terms_filtered.push_back(it);
   }
 
   // special case for unigrams
   if( ngram_min == ngram_max &&  ngram_max == 1 ) {
-    ngrams = terms_filtered_buffer;
-    return;
+    return(terms_filtered);
   }
-
-  uint32_t len = terms_filtered_buffer.size();
 
   string k_gram;
   size_t k, j_max_observed;
@@ -97,12 +84,12 @@ void generate_ngrams(CharacterVector terms_raw,
   for(size_t j = 0; j < len; j ++ ) {
     k = 1;
     j_max_observed = j;
-    while (k <= ngram_max && j_max_observed < len) {
+    while (k <= ngram_max && j_max_observed < terms_filtered.size()) {
 
       if( k == 1) {
-        k_gram = terms_filtered_buffer[j_max_observed];
+        k_gram = terms_filtered[j_max_observed];
       } else
-        k_gram = k_gram + ngram_delim + terms_filtered_buffer[j_max_observed];
+        k_gram = k_gram + ngram_delim + terms_filtered[j_max_observed];
 
       if(k >= ngram_min) {
         ngrams.push_back(k_gram);
@@ -111,4 +98,28 @@ void generate_ngrams(CharacterVector terms_raw,
       k = k + 1;
     }
   }
+  return(ngrams);
+}
+
+std::vector<std::string> fixed_char_tokenizer(const std::string &s, char delim) {
+  std::stringstream ss(s);
+  std::string item;
+  std::vector<std::string> elems;
+  while (std::getline(ss, item, delim)) {
+    elems.push_back(std::move(item));
+  }
+  return elems;
+}
+
+// [[Rcpp::export]]
+SEXP cpp_fixed_char_tokenizer(CharacterVector x, char delim) {
+  std::vector<std::string> docs = charvec2stdvec(x);
+  std::vector<std::vector < std::string> > *tokens = new std::vector<std::vector < std::string> >;
+  tokens->reserve(x.size());
+  for(auto doc : docs) {
+    tokens->push_back(fixed_char_tokenizer(doc, delim));
+  }
+  XPtr< std::vector<std::vector < std::string> > > ptr(tokens, true);
+  ptr.attr("class") = CharacterVector::create("tokens_xprt");
+  return ptr;
 }

@@ -49,18 +49,13 @@ protected:
   uint32_t ngram_max;
   // ngram concatenation delimiter
   string ngram_delim;
-  // buffer for filtering out stopwords
-  // this is to avoid memory re-allocation
-  vector<string> terms_filtered_buffer;
-  // buffer for ngrans
-  // this is to avoid memory re-allocation
-  vector< string> ngrams_buffer;
 
-  uint32_t window_size;
+  // uint32_t window_size;
   // stopwords
-  RCPP_UNORDERED_SET<string> stopwords;
+  unordered_set<string> stopwords;
   // documents
   SparseTripletMatrix<int> dtm;
+  std::vector<int> word_count;
 
   //#####Glove related
   uint64_t cooc_tokens_number;
@@ -68,9 +63,9 @@ protected:
   // term cooccurence matrix
   SparseTripletMatrix<float> tcm;
 
-  inline float weighting_fun(uint32_t offset) {
-    return 1.0 / (float)offset;
-  }
+  // inline float weighting_fun(uint32_t offset) {
+  //   return 1.0 / (float)offset;
+  // }
 
   SEXP get_dtm_triplet();
 };

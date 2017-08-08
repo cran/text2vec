@@ -14,114 +14,88 @@
 #   // You should have received a copy of the GNU General Public License
 # // along with text2vec.  If not, see <http://www.gnu.org/licenses/>.
 
-corpus_insert = function(corpus, iterator, grow_dtm = TRUE) {
-  if (inherits(iterator, 'R6'))
+encode_context = function(context_string_name = c("symmetric", "right", "left")) {
+  context_string_name = match.arg(context_string_name)
+  switch(context_string_name,
+         symmetric = 0L,
+         right = 1L,
+         left = -1L)
+}
+
+corpus_insert_generic = function(corpus_ptr, tokens, grow_dtm, skip_grams_window_context, window_size, weights) {
+  if(inherits(corpus_ptr, "HashCorpus")) {
+    cpp_hash_corpus_insert_document_batch(corpus_ptr, tokens, grow_dtm, skip_grams_window_context, window_size, weights)
+  } else if(inherits(corpus_ptr, "VocabCorpus")) {
+    cpp_vocabulary_corpus_insert_document_batch(corpus_ptr, tokens, grow_dtm, skip_grams_window_context, window_size, weights)
+  } else {
+    stop("can't recognize corpus - neither HashCorpus or VocabCorpus")
+  }
+
+  e = environment()
+  reg.finalizer(e, malloc_trim_finalizer)
+  TRUE
+}
+
+corpus_insert = function(corpus_ptr, iterator, grow_dtm, skip_grams_window_context, window_size, weights) {
+  skip_grams_window_context_code = force(encode_context(skip_grams_window_context))
+  if (inherits(iterator, "R6"))
     it = iterator$clone(deep = TRUE)
   else {
-    warning("Can't clone input iterator. It will be modified by current function call", immediate. = T)
+    warning("Can't clone input iterator. It will be modified by current function call", immediate. = TRUE)
     it = iterator
   }
   ids = foreach(val = it, .combine = c, .multicombine = TRUE ) %do% {
-    corpus$insert_document_batch(val$tokens, grow_dtm)
+    res = corpus_insert_generic(corpus_ptr, val$tokens, grow_dtm, skip_grams_window_context_code, window_size, weights)
+    if(!res) stop("something went wrong during insert into corpus")
     val$ids
   }
-  attr(corpus, "ids") = ids
-  corpus
-}
-
-#' @name create_corpus
-#' @title Create a corpus
-#' @description This functions creates corpus objects (based on vocabulary or
-#'   hashes), which are stored outside of R's heap and wrapped via reference
-#'   classes using Rcpp-Modules. From those objects you can easily extract
-#'   document-term (DTM) and term-co-occurrence (TCM) matrices. Also, text2vec
-#'   grows the corpus for DTM and TCM matrices simultaneously in a RAM-friendly
-#'   and efficient way using the iterators abstraction. You can build corpora
-#'   from objects or files which are orders of magnitude larger that available
-#'   RAM.
-#' @param iterator iterator over a \code{list} of \code{character} vectors. Each
-#'   element is a list of tokens, that is, tokenized and normalized strings.
-#' @param vectorizer \code{function} vectorizer function. See
-#'   \link{vectorizers}.
-#' @return \code{Corpus} object.
-#' @seealso \link{vectorizers}, \link{create_dtm}, \link{get_dtm},
-#'   \link{get_tcm}, \link{create_tcm}
-#' @export
-create_corpus = function(iterator,
-                          vectorizer) {
-  if (!inherits(iterator, 'iter'))
-    stop("iterator argument should be iterator over list of tokens (class 'iter')")
-
-  corpus = vectorizer(iterator)
-  corpus
+  attr(corpus_ptr, "ids") = ids
+  corpus_ptr
 }
 
 #' @name vectorizers
 #' @title Vocabulary and hash vectorizers
-#' @description This function creates a text vectorizer function
-#' which is used in constructing a dtm/tcm/corpus.
-#' @param grow_dtm \code{logical} Should we grow the document-term matrix
-#' during corpus construction or not.
-#' @param skip_grams_window \code{integer} window for term-co-occurence matrix
-#' construction. \code{skip_grams_window} should be > 0 if you plan to use
-#' \code{vectorizer} in \link{create_tcm} function.
-#' Value of \code{0L} means to not construct the TCM.
-#' @return A vectorizer \code{function}
-#' @seealso \link{create_dtm} \link{create_tcm} \link{create_vocabulary} \link{create_corpus}
+#' @description This function creates an object (closure) which defines on how to
+#' transform list of tokens into vector space - i.e. how to map words to indices.
+#' It supposed to be used only as argument to \link{create_dtm}, \link{create_tcm},
+#' \link{create_vocabulary}.
+#' @return A vectorizer \code{object} (closure).
+#' @seealso \link{create_dtm} \link{create_tcm} \link{create_vocabulary}
 #' @examples
 #' data("movie_review")
 #' N = 100
 #' vectorizer = hash_vectorizer(2 ^ 18, c(1L, 2L))
 #' it = itoken(movie_review$review[1:N], preprocess_function = tolower,
-#'              tokenizer = word_tokenizer, chunks_number = 10)
-#' corpus = create_corpus(it, vectorizer)
-#' hash_dtm = get_dtm(corpus)
+#'              tokenizer = word_tokenizer, n_chunks = 10)
+#' hash_dtm = create_dtm(it, vectorizer)
 #'
 #' it = itoken(movie_review$review[1:N], preprocess_function = tolower,
-#'              tokenizer = word_tokenizer, chunks_number = 10)
+#'              tokenizer = word_tokenizer, n_chunks = 10)
 #' v = create_vocabulary(it, c(1L, 1L) )
 #'
 #' vectorizer = vocab_vectorizer(v)
 #'
 #' it = itoken(movie_review$review[1:N], preprocess_function = tolower,
-#'              tokenizer = word_tokenizer, chunks_number = 10)
+#'              tokenizer = word_tokenizer, n_chunks = 10)
 #'
-#' corpus = create_corpus(it, vectorizer)
-#' voacb_dtm = get_dtm(corpus)
+#' dtm = create_dtm(it, vectorizer)
 
 
 #' @rdname vectorizers
 #' @param vocabulary \code{text2vec_vocabulary} object, see \link{create_vocabulary}.
 #' @export
-vocab_vectorizer = function(vocabulary,
-                             grow_dtm = TRUE,
-                             skip_grams_window = 0L) {
-
-  if (!grow_dtm && skip_grams_window == 0L)
-    stop("At least one of the arguments 'grow_dtm', 'skip_grams_window' should
-         satisfy grow_dtm == TRUE or skip_grams_window > 0")
-
-  if ( skip_grams_window > 0 && vocabulary$ngram[[2]] > 1) {
-    msg = "skip_grams_window > 0 with ngram != c(1, 1) looks strange!"
-    msg = paste(msg, "We hope you know what are you doing!")
-    warning(msg, immediate. = TRUE)
+vocab_vectorizer = function(vocabulary) {
+  force(vocabulary)
+  vectorizer = function(iterator, grow_dtm, skip_grams_window_context, window_size, weights) {
+    vocab_corpus_ptr = cpp_vocabulary_corpus_create(vocabulary$term,
+                                                    attr(vocabulary, "ngram")[[1]],
+                                                    attr(vocabulary, "ngram")[[2]],
+                                                    attr(vocabulary, "stopwords"),
+                                                    attr(vocabulary, "sep_ngram"))
+    setattr(vocab_corpus_ptr, "ids", character(0))
+    setattr(vocab_corpus_ptr, "class", "VocabCorpus")
+    corpus_insert(vocab_corpus_ptr, iterator, grow_dtm, skip_grams_window_context, window_size, weights)
   }
-
-  vectorizer = function(iterator) {
-
-    vocab_corpus = new(VocabCorpus,
-                        vocab = vocabulary$vocab$terms,
-                        ngram_min = vocabulary$ngram[["ngram_min"]],
-                        ngram_max = vocabulary$ngram[["ngram_max"]],
-                        window_size = skip_grams_window,
-                        stopwords = vocabulary$stopwords,
-                        delim = vocabulary$sep_ngram)
-
-    attr(vocab_corpus, 'ids') = character(0)
-    corpus_insert(vocab_corpus, iterator, grow_dtm)
-  }
-  attr(vectorizer, "skip_grams_window") = skip_grams_window
-  attr(vectorizer, "grow_dtm") = grow_dtm
   vectorizer
 }
 
@@ -136,34 +110,15 @@ vocab_vectorizer = function(vocabulary,
 #'   hash-function to reduce collisions when hashing.
 #' @export
 hash_vectorizer = function(hash_size = 2 ^ 18,
-                            ngram = c(1L, 1L),
-                            signed_hash = FALSE,
-                            grow_dtm = TRUE,
-                            skip_grams_window = 0L) {
+                           ngram = c(1L, 1L),
+                           signed_hash = FALSE) {
   stopifnot(is.numeric(ngram) && length(ngram) == 2 && ngram[[2]] >= ngram[[1]])
 
-  if ( skip_grams_window > 0 && ngram[[2]] > 1) {
-    msg = "skip_grams_window > 0 with ngram != c(1, 1) looks strange!"
-    msg = paste(msg, "We hope you know what are you doing!")
-    warning(msg, immediate. = TRUE)
+  vectorizer = function(iterator, grow_dtm, skip_grams_window_context, window_size, weights) {
+    hash_corpus_ptr = cpp_hash_corpus_create(hash_size, ngram[[1]], ngram[[2]], signed_hash)
+    attr(hash_corpus_ptr, "ids") = character(0)
+    class(hash_corpus_ptr) = "HashCorpus"
+    corpus_insert(hash_corpus_ptr, iterator, grow_dtm, skip_grams_window_context, window_size, weights)
   }
-
-  if (!grow_dtm && skip_grams_window == 0L)
-    stop("At least one of the arguments 'grow_dtm', 'skip_grams_window' should be defined:
-          grow_dtm == TRUE or skip_grams_window > 0")
-
-  vectorizer = function(iterator) {
-    hash_corpus = new(HashCorpus,
-                       hash_size = hash_size,
-                       ngram_min = ngram[[1]],
-                       ngram_max = ngram[[2]],
-                       window_size = 0,
-                       signed_hash)
-    attr(hash_corpus, 'ids') = character(0)
-    corpus_insert(hash_corpus, iterator, grow_dtm)
-  }
-  attr(vectorizer, "skip_grams_window") = skip_grams_window
-  attr(vectorizer, "grow_dtm") = grow_dtm
-  vectorizer
   vectorizer
 }

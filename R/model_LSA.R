@@ -23,26 +23,27 @@
 #' @section Usage:
 #' For usage details see \bold{Methods, Arguments and Examples} sections.
 #' \preformatted{
-#' lsa = LatentSemanticAnalysis$new(n_topics)
-#' lsa$fit_transform(x)
-#' lsa$get_word_vectors()
+#' lsa = LatentSemanticAnalysis$new(n_topics, method = c("randomized", "irlba"))
+#' lsa$fit_transform(x, ...)
+#' lsa$transform(x, ...)
+#' lsa$components
 #' }
 #' @section Methods:
 #' \describe{
 #'   \item{\code{$new(n_topics)}}{create LSA model with \code{n_topics} latent topics}
-#'   \item{\code{$fit(x, ...)}}{fit model to an input DTM (preferably in "dgCMatrix" format)}
-#'   \item{\code{$fit_transform(x, ...)}}{fit model to an input sparse matrix (preferably in "dgCMatrix"
+#'   \item{\code{$fit_transform(x, ...)}}{fit model to an input sparse matrix (preferably in \code{dgCMatrix}
 #'    format) and then transform \code{x} to latent space}
 #'   \item{\code{$transform(x, ...)}}{transform new data \code{x} to latent space}
 #'}
-#' @field verbose \code{logical = TRUE} whether to display training inforamtion
 #' @section Arguments:
 #' \describe{
 #'  \item{lsa}{A \code{LSA} object.}
-#'  \item{x}{An input document-term matrix.}
+#'  \item{x}{An input document-term matrix. Preferably in \code{dgCMatrix} format}
 #'  \item{n_topics}{\code{integer} desired number of latent topics.}
-#'  \item{...}{Arguments to internal functions. Notably useful for \code{fit(), fit_transform()} -
-#'  these arguments will be passed to \link{irlba} function which is used as backend for SVD.}
+#'  \item{method}{\code{character}, one of \code{c("randomized", "irlba")}. Defines underlying SVD algorithm.
+#'  For very large data "randomized" usually works faster and more accurate. }
+#'  \item{...}{Arguments to internal functions. Notably useful for \code{fit_transform()} -
+#'  these arguments will be passed to \link{irlba} or \link{svdr} functions which are used as backend for SVD.}
 #' }
 #' @export
 #' @examples
@@ -52,71 +53,77 @@
 #' dtm = create_dtm(itoken(tokens), hash_vectorizer())
 #' n_topics = 10
 #' lsa_1 = LatentSemanticAnalysis$new(n_topics)
-#' fit(dtm, lsa_1) # or lsa_1$fit(dtm)
-#' d1 = lsa_1$transform(dtm)
-#' lsa_2 = LatentSemanticAnalysis$new(n_topics)
-#' d2 = lsa_2$fit_transform(dtm)
-#' all.equal(d1, d2)
+#' d1 = lsa_1$fit_transform(dtm)
 #' # the same, but wrapped with S3 methods
-#' all.equal(fit_transform(dtm, lsa_2), fit_transform(dtm, lsa_1))
+#' d2 = fit_transform(dtm, lsa_1)
+#'
+
 LatentSemanticAnalysis = R6::R6Class(
-  "LSA",
-  inherit = text2vec_topic_model,
+  "LatentSemanticAnalysis",
+  inherit = mlapiDecomposition,
   public = list(
-    initialize = function(n_topics) {
+    #----------------------------------------------------------------------------
+    # methods
+    # constructor
+    initialize = function(n_topics, method = c("irlba", "randomized")) {
+      super$set_internal_matrix_formats(sparse = "CsparseMatrix")
       private$n_topics = n_topics
       private$fitted = FALSE
-      private$internal_matrix_format = 'dgCMatrix'
-    },
-    fit = function(x, ...) {
-      x_internal = coerce_matrix(x, private$internal_matrix_format, verbose = self$verbose)
-      # old RSpectra version
-      # svd_fit = RSpectra::svds(x_internal, k = private$n_topics, nv = private$n_topics, nu = 0)
-
-      # http://stackoverflow.com/questions/7028385/can-i-remove-an-element-in-dot-dot-dot-and-pass-it-on
-      # remove "y" from S3 call
-      fit_svd = function(..., y)
-        irlba::irlba(x_internal, nv = private$n_topics, nu = 0, verbose = self$verbose, ...)
-      svd_fit = fit_svd(...)
-      private$lsa_factor_matrix = svd_fit$v;
-      rownames(private$lsa_factor_matrix) = colnames(x_internal)
-
-      private$singular_values = svd_fit$d; rm(svd_fit)
-      private$fitted = TRUE
-      invisible(self)
+      private$svd_method = match.arg(method)
     },
     fit_transform = function(x, ...) {
-      x_internal = coerce_matrix(x, private$internal_matrix_format, verbose = self$verbose)
-      # old RSpectra version
-      # svd_fit = RSpectra::svds(x_internal, k = private$n_topics, nv = private$n_topics, nu = private$n_topics)
-
-      # http://stackoverflow.com/questions/7028385/can-i-remove-an-element-in-dot-dot-dot-and-pass-it-on
-      # remove "y" from S3 call
-      fit_svd = function(..., y)
-        irlba::irlba(x_internal, nv = private$n_topics, nu = private$n_topics, verbose = self$verbose, ...)
+      x = super$check_convert_input(x, private$internal_matrix_formats)
+      if(private$svd_method == "irlba") {
+        # http://stackoverflow.com/questions/7028385/can-i-remove-an-element-in-dot-dot-dot-and-pass-it-on
+        # remove "y" from S3 call
+        fit_svd = function(..., y)
+          irlba::irlba(x, nv = private$n_topics, nu = private$n_topics, ...)
+      } else if(private$svd_method == "randomized") {
+        fit_svd = function(..., y)
+          irlba::svdr(x, k = private$n_topics, ...)
+      } else {
+        stop(sprintf("don't know method %d", private$svd_method))
+      }
       svd_fit = fit_svd(...)
-      # save parameters
-      private$singular_values = svd_fit$d
-      private$lsa_factor_matrix = svd_fit$v
-      rownames(private$lsa_factor_matrix) = colnames(x_internal)
-      documents = svd_fit$u %*% diag(x = private$singular_values)
+
+      documents = svd_fit$u %*% diag(x = sqrt(svd_fit$d))
+      private$components_ = t(svd_fit$v %*% diag(x = sqrt(svd_fit$d)))
+      rm(svd_fit)
       rownames(documents) = rownames(x)
+      colnames(private$components_) = colnames(x)
+
       private$fitted = TRUE
       documents
     },
     transform = function(x, ...) {
-      if (private$fitted)
-        as.matrix(x %*% private$lsa_factor_matrix)
+      if (private$fitted) {
+        stopifnot(ncol(x) == ncol(private$components_))
+        lhs = tcrossprod(private$components_)
+        rhs = as.matrix(tcrossprod(private$components_, x))
+        t(solve(lhs, rhs))
+      }
       else
-        stop("Fit the model first!")
+        stop("Fit the model first woth model$fit_transform()!")
     },
+    active = list(
+      # make components read only via active bindings
+      components = function(value) {
+        if (!missing(value)) stop("Sorry this is a read-only field")
+        else {
+          if(is.null(private$components_)) stop("model was not fitted yet!")
+          else private$components_
+        }
+      }
+    ),
     get_word_vectors = function() {
-      diag(x = private$singular_values) %*% private$lsa_factor_matrix
+      .Deprecated("model$components")
     }
   ),
   private = list(
-    singular_values = NULL,
-    lsa_factor_matrix = NULL
+    n_topics = NULL,
+    components_ = NULL,
+    fitted = FALSE,
+    svd_method = NULL
   )
 )
 

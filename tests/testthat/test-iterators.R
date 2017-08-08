@@ -21,7 +21,7 @@ test_that("ifiles", {
   it = ifiles(c(temp_file_1, temp_file_2))
   it2 = itoken(it, preprocessor = tolower, tokenizer = word_tokenizer, progressbar = FALSE)
   v = create_vocabulary(it2)
-  expect_equal(nrow(v$vocab), 7261)
+  expect_equal(nrow(v), 7261)
   v2 = create_vocabulary(it2)
   expect_equal(v, v2)
   dtm = create_dtm(it2, hash_vectorizer())
@@ -30,46 +30,52 @@ test_that("ifiles", {
   expect_equal(rownames(dtm), expected_rownames)
 })
 
+test_that("ifiles_parallel", {
+  it = ifiles_parallel(c(temp_file_1, temp_file_2))
+  it2 = itoken_parallel(it, preprocessor = tolower, tokenizer = word_tokenizer, progressbar = FALSE)
+  expect_warning(v <- create_vocabulary(it2))
+  expect_equal(nrow(v), 7261)
+  v2 = create_vocabulary(it2)
+  expect_equal(v, v2)
+  dtm = create_dtm(it2, hash_vectorizer())
+  expected_rownames = c(paste(basename(temp_file_1), seq_along(txt_1), sep = "_"),
+                        paste(basename(temp_file_2), seq_along(txt_2), sep = "_"))
+  expect_equal(rownames(dtm), expected_rownames)
+})
+
+
 test_that("idir", {
   it = idir(path = tmp_dir)
   it2 = itoken(it, preprocessor = tolower, tokenizer = word_tokenizer, progressbar = FALSE)
   v = create_vocabulary(it2)
-  expect_equal(nrow(v$vocab), 7261)
+  expect_equal(nrow(v), 7261)
 })
 
 # test_that("ilines", {
 #   it = ilines(con = temp_file_1, n = 10)
 #   it2 = itoken(it, preprocessor = tolower, tokenizer = word_tokenizer)
 #   v = create_vocabulary(it2)
-#   expect_equal(nrow(v$vocab), 4464)
+#   expect_equal(nrow(v), 4464)
 # })
 
 test_that("itoken character", {
   it2 = itoken(txt_1, preprocessor = tolower, tokenizer = word_tokenizer, progressbar = FALSE)
   v = create_vocabulary(it2)
-  expect_equal(nrow(v$vocab), 4464)
+  expect_equal(nrow(v), 4464)
 })
 
-########################################
-# test input empty iterators
-########################################
-# test_that("empty input iterators", {
-#   tokens = movie_review[seq_len(N),]$review %>% tolower %>% strsplit(' ', T)
-#   it = itoken(tokens)
-#   v = create_vocabulary(it)
-#   expect_equal(nrow(v$vocab), 5949L)
-#   expect_error(create_vocabulary(it), "vocabulary has no elements. Did you miss to reinitialise iterator over tokens?")
-#   expect_error(create_dtm(it, vocab_vectorizer(v)), "dtm has 0 rows. Did you miss to reinitialise iterator over tokens?")
-#   expect_error(create_dtm(it, hash_vectorizer()), "dtm has 0 rows. Did you miss to reinitialise iterator over tokens?")
-#   expect_error(create_tcm(it, vocab_vectorizer(v, grow_dtm = F, skip_grams_window = 2)), "tcm has 0 rows. Did you miss to reinitialise iterator over tokens?")
-# })
-
+test_that("itoken character parallel", {
+  it2 = itoken_parallel(txt_1, preprocessor = tolower, tokenizer = word_tokenizer)
+  v = create_vocabulary(it2)
+  expect_equal(nrow(v), 4464)
+})
 
 ########################################
 # test that iterators are immutable
 ########################################
 test_that("immutable input iterators", {
-  tokens = movie_review[seq_len(N),]$review %>% tolower %>% space_tokenizer
+  tokens = tolower(movie_review[seq_len(N),]$review)
+  tokens = space_tokenizer(tokens)
   it = itoken(tokens, progressbar = FALSE)
   v = create_vocabulary(it)
   dtm1 = create_dtm(it, vocab_vectorizer(v))

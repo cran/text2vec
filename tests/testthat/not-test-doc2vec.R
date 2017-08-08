@@ -2,7 +2,7 @@
 # data("movie_review")
 #
 # it <- itoken(movie_review[['review']], preprocess_function = tolower,
-#              tokenizer = word_tokenizer, chunks_number = 10, progessbar = F)
+#              tokenizer = word_tokenizer, n_chunks = 10, progessbar = F)
 # # using unigrams here
 # t1 <- Sys.time()
 # vocab <- vocabulary(src = it, ngram = c(1L, 1L))
@@ -12,7 +12,7 @@
 #                                  doc_proportion_max = 0.5, doc_proportion_min = 0.001)
 #
 # it <- itoken(movie_review[['review']], preprocess_function = tolower,
-#              tokenizer = word_tokenizer, chunks_number = 10, progessbar = F)
+#              tokenizer = word_tokenizer, n_chunks = 10, progessbar = F)
 #
 # corpus <- create_vocab_corpus(it, vocabulary = pruned_vocab, grow_dtm = T,
 #                               skip_grams_window = 5,
@@ -30,7 +30,7 @@
 #
 # Sys.time()
 # fit <- glove(tcm = m2, word_vectors_size = 50, x_max = 30,  num_iters = 0, shuffle = T,
-#              learning_rate = 0.1, verbose = T, convergence_threshold = 0.005)
+#              learning_rate = 0.1, convergence_threshold = 0.005)
 # Sys.time()
 #
 # m1 <- fit$word_vectors$w_i + fit$word_vectors$w_j

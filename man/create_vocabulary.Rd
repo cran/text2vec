@@ -2,10 +2,11 @@
 % Please edit documentation in R/vocabulary.R
 \name{create_vocabulary}
 \alias{create_vocabulary}
+\alias{vocabulary}
 \alias{create_vocabulary.character}
 \alias{create_vocabulary.itoken}
 \alias{create_vocabulary.list}
-\alias{vocabulary}
+\alias{create_vocabulary.itoken_parallel}
 \title{Creates a vocabulary of unique terms}
 \usage{
 create_vocabulary(it, ngram = c(ngram_min = 1L, ngram_max = 1L),
@@ -22,6 +23,9 @@ vocabulary(it, ngram = c(ngram_min = 1L, ngram_max = 1L),
 
 \method{create_vocabulary}{list}(it, ngram = c(ngram_min = 1L, ngram_max =
   1L), stopwords = character(0), sep_ngram = "_", ...)
+
+\method{create_vocabulary}{itoken_parallel}(it, ngram = c(ngram_min = 1L,
+  ngram_max = 1L), stopwords = character(0), sep_ngram = "_", ...)
 }
 \arguments{
 \item{it}{iterator over a \code{list} of \code{character} vectors,
@@ -41,20 +45,19 @@ such that ngram_min <= n <= ngram_max will be used.}
 \item{...}{additional arguments to \link{foreach} function.}
 }
 \value{
-\code{text2vec_vocabulary} object, which is actually a \code{list}
- with following fields:
-
- 1. \code{vocab}: a \code{data.frame} which contains columns \itemize{
- \item{\code{terms}       }{ \code{character} vector of unique terms}
- \item{\code{terms_counts} }{ \code{integer} vector of term counts across all
- documents} \item{\code{doc_counts}  }{ \code{integer} vector of document
- counts that contain corresponding term} }
-
- 2. \code{ngram}: \code{integer} vector, the lower and upper boundary of the
+\code{text2vec_vocabulary} object, which is actually a \code{data.frame}
+ with following columns:
+ \item{\code{term}       }{ \code{character} vector of unique terms}
+ \item{\code{term_count} }{ \code{integer} vector of term counts across all
+ documents} \item{\code{doc_count}  }{ \code{integer} vector of document
+ counts that contain corresponding term}
+Also it contains metainformation in attributes:
+ \code{ngram}: \code{integer} vector, the lower and upper boundary of the
  range of n-gram-values.
-
- 3. \code{document_count}: \code{integer} number of documents vocabulary was
+ \code{document_count}: \code{integer} number of documents vocabulary was
  built.
+ \code{stopwords}: \code{character} vector of stopwords
+ \code{sep_ngram}: \code{character} separator for ngrams
 }
 \description{
 This function collects unique terms and corresponding statistics.
@@ -64,20 +67,24 @@ This function collects unique terms and corresponding statistics.
 \itemize{
 \item \code{character}: creates \code{text2vec_vocabulary} from predefined
 character vector. Terms will be inserted \bold{as is}, without any checks
-(ngrams numner, ngram delimiters, etc.).
+(ngrams number, ngram delimiters, etc.).
 
 \item \code{itoken}: collects unique terms and corresponding statistics from object.
 
 \item \code{list}: collects unique terms and corresponding
 statistics from list of itoken iterators. If parallel backend is
 registered, it will build vocabulary in parallel using \link{foreach}.
+
+\item \code{itoken_parallel}: collects unique terms and corresponding
+statistics from iterator. If parallel backend is
+registered, it will build vocabulary in parallel using \link{foreach}.
 }}
+
 \examples{
 data("movie_review")
 txt = movie_review[['review']][1:100]
-it = itoken(txt, tolower, word_tokenizer, chunks_number = 10)
+it = itoken(txt, tolower, word_tokenizer, n_chunks = 10)
 vocab = create_vocabulary(it)
-pruned_vocab = prune_vocabulary(vocab, term_count_min = 10,
- doc_proportion_max = 0.8, doc_proportion_min = 0.001, max_number_of_terms = 20000)
+pruned_vocab = prune_vocabulary(vocab, term_count_min = 10, doc_proportion_max = 0.8,
+doc_proportion_min = 0.001, vocab_term_max = 20000)
 }
-

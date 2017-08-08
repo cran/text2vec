@@ -4,11 +4,18 @@ m1 = matrix(1:15, nrow = 5)
 m2 = matrix(1:12, nrow = 4)
 tol = 1e-5
 
-tokens = movie_review$review[ind] %>% tolower %>% word_tokenizer
-it = itoken(tokens, progressbar = F)
-v = create_vocabulary(it) %>% prune_vocabulary(term_count_min = 3)
+tokens = tolower(movie_review$review[ind])
+tokens = word_tokenizer(tokens)
+
+it = itoken(tokens, progressbar = FALSE)
+v = create_vocabulary(it)
+v = prune_vocabulary(v, term_count_min = 3)
+# vv = vocab_vectorizer(v)
+#
+# temp = vv(iterator = it, grow_dtm = T, skip_grams_window_context = "symmetric", window_size = 0)
+
 dtm = create_dtm(it, vectorizer = vocab_vectorizer(v))
-tcm = create_tcm(it, vectorizer = vocab_vectorizer(v, grow_dtm = FALSE, skip_grams_window = 5))
+tcm = create_tcm(it, vectorizer = vocab_vectorizer(v), skip_grams_window = 5)
 i1 = 1:10
 i2 = 1:20
 
@@ -64,10 +71,8 @@ test_that("euclidean", {
 
 test_that("relaxed word mover distance", {
   glove = GlobalVectors$new(word_vectors_size = 50, vocabulary = v, x_max = 10)
-  glove$fit(tcm, n_iter = 10)
-  wv = glove$get_word_vectors()
+  wv = glove$fit_transform(tcm, n_iter = 10)
   rwmd_model = RWMD$new(wv)
-  rwmd_model$verbose = FALSE
   rwmd_dist = dist2(dtm[i1, ], dtm[i2, ], method = rwmd_model, norm = "none")
   expect_equal(nrow(rwmd_dist), length(i1))
   expect_equal(ncol(rwmd_dist), length(i2))

@@ -10,7 +10,7 @@ library(data.table)
 data("movie_review")
 setDT(movie_review)
 setkey(movie_review, id)
-set.seed(2016L)
+set.seed(2017L)
 all_ids = movie_review$id
 train_ids = sample(all_ids, 4000)
 test_ids = setdiff(all_ids, train_ids)
@@ -18,7 +18,7 @@ train = movie_review[J(train_ids)]
 test = movie_review[J(test_ids)]
 
 ## ---- vocab-iterator, eval=TRUE, message=FALSE--------------------------------
-# define preprocessing function and tokenization fucntion
+# define preprocessing function and tokenization function
 prep_fun = tolower
 tok_fun = word_tokenizer
 
@@ -107,7 +107,7 @@ print(difftime(Sys.time(), t1, units = 'sec'))
 dim(dtm_train)
 
 ## ---- prune_vocab_dtm_1_test--------------------------------------------------
-dtm_test   = create_dtm(it_test, vectorizer)
+dtm_test = create_dtm(it_test, vectorizer)
 dim(dtm_test)
 
 ## ---- ngram_dtm_1-------------------------------------------------------------

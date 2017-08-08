@@ -1,3 +1,27 @@
+# text2vec 0.5.0
+
+1. 2017-06-12
+    * Add additional filters to `prune_vocabulary` - filter by document counts
+    * Clean up LSA, fixed transform method. Added option to use randomized SVD algorithm from `irlba`.
+1. 2017-05-17
+    * Imrove `dist2` performamce for RWMD - incorporate ideas from [gensim PR discussion](https://github.com/RaRe-Technologies/gensim/pull/800#issuecomment-260743822).
+1. 2017-05-17
+    * **API breaking change** - vocabulary format change - now plain `data.frame` with meta-information in attributes (stopwords, ngram, number of docs, etc).
+1. 2017-03-25
+    * No more rely on RcppModules
+    * **API breaking change** - removed `lda_c` from formats in DTM construction
+    * added `ifiles_parallel`, `itoken_parallel` high-level functions for parallel computing
+    * **API breaking change**  `chunks_numer` parameter renamed to `n_chunks`
+1. 2017-01-02 
+    * **API breaking change** - removed `create_corpus` from public API, moved co-occurence related optons to `create_tcm` from vecorizers
+    * add ability to add custom weights for co-occurence statistics calculations
+1. 2016-12-30 
+    * Noticeable **speedup** (**1.5x**) and even more noticeable improvement on memory usage (**2x** less!) for `create_dtm`, `create_tcm` . Now package relies on [sparsepp](https://github.com/dselivanov/sparsepp) library for underlying hash maps.
+1. 2016-10-30 
+    * Collocations -  detection of multi-word phrases using differend heuristics - *PMI, gensim, LFMD*.
+1. 2016-10-20 
+    * Fixed bug in `as.lda_c()` function
+
 # text2vec 0.4.0
 
 2016-10-03. See [0.4 milestone tags](https://github.com/dselivanov/text2vec/milestone/3).
@@ -44,5 +68,5 @@ First CRAN release of text2vec.
     * Hash vectorizer (based on digest murmurhash3)
     * Vocabulary vectorizer
 * GloVe algorithm word embeddings.
-    * Fast term-cooccurence matrix factorization via parallel async AdaGrad.
+    * Fast term-co-occurence matrix factorization via parallel async AdaGrad.
 * All core functions written in C++.

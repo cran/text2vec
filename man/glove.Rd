@@ -5,9 +5,8 @@
 \title{Fit a GloVe word-embedded model}
 \usage{
 glove(tcm, vocabulary_size = nrow(tcm), word_vectors_size, x_max, num_iters,
-  shuffle_seed = NA_integer_, learning_rate = 0.05, verbose = TRUE,
-  convergence_threshold = -1, grain_size = 100000L, max_cost = 10,
-  alpha = 0.75, ...)
+  shuffle_seed = NA_integer_, learning_rate = 0.05,
+  convergence_threshold = -1, grain_size = 100000L, alpha = 0.75, ...)
 }
 \arguments{
 \item{tcm}{an object which represents a term-co-occurrence matrix, which is
@@ -17,7 +16,7 @@ support for out-of-core learning and streaming a TCM from disk.}
 
 \item{vocabulary_size}{number of words in in the term-co-occurrence matrix}
 
-\item{word_vectors_size}{desired dimenson for word vectors}
+\item{word_vectors_size}{desired dimension for word vectors}
 
 \item{x_max}{maximum number of co-occurrences to use in the weighting
 function. See the GloVe paper for details:
@@ -29,7 +28,7 @@ function. See the GloVe paper for details:
 shuffling off. A seed defines shuffling before each SGD iteration.
 Parameter only controls shuffling before each SGD iteration. Result still
 will be unpredictable (because of Hogwild style async SGD)!
-Generelly shuffling is a good idea for stochastic-gradient descent, but
+Generally shuffling is a good idea for stochastic-gradient descent, but
 from my experience in this particular case it does not improve convergence.
 By default there is no shuffling. Please report if you find that shuffling
 improves your score.}
@@ -37,20 +36,14 @@ improves your score.}
 \item{learning_rate}{learning rate for SGD. I do not recommend that you
 modify this parameter, since AdaGrad will quickly adjust it to optimal.}
 
-\item{verbose}{\code{logical} whether to display training inforamtion}
-
 \item{convergence_threshold}{defines early stopping strategy. We stop fitting
 when one of two following conditions will be satisfied: (a) we have used
 all iterations, or (b) \code{cost_previous_iter / cost_current_iter - 1 <
 convergence_threshold}.}
 
-\item{grain_size}{I do not recommend adjusting this paramenter. This is the
+\item{grain_size}{I do not recommend adjusting this parameter. This is the
 grain_size for \code{RcppParallel::parallelReduce}. For details, see
 \url{http://rcppcore.github.io/RcppParallel/#grain-size}.}
-
-\item{max_cost}{the maximum absolute value of calculated gradient for any
-single co-occurrence pair. Try to set this to a smaller value if you have
-problems with numerical stability.}
 
 \item{alpha}{the alpha in weighting function formula : \eqn{f(x) = 1 if x >
 x_max; else (x/x_max)^alpha}}
@@ -61,4 +54,3 @@ x_max; else (x/x_max)^alpha}}
 \bold{DEPRECIATED}.This function trains a GloVe word-embeddings model via fully
   asynchronous and parallel AdaGrad.
 }
-

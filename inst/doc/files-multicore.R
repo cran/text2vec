@@ -36,8 +36,7 @@ reader = function(x, ...) {
 # create iterator over files
 it_files  = ifiles(files, reader = reader)
 # create iterator over tokens from files iterator
-it_tokens = itoken(it_files, preprocess_function = tolower, 
-                    tokenizer = word_tokenizer, progessbar = FALSE)
+it_tokens = itoken(it_files, preprocessor = tolower, tokenizer = word_tokenizer, progressbar = FALSE)
 
 vocab = create_vocabulary(it_tokens)
 
@@ -53,53 +52,44 @@ for (i in 1:N_FILES ) {
 # read with default reader - readLines
 it_files  = ifiles(files)
 # create iterator over tokens from files iterator
-it_tokens = itoken(it_files, preprocess_function = tolower, 
-                    tokenizer = word_tokenizer, progessbar = FALSE)
+it_tokens = itoken(it_files, preprocessor = tolower,  tokenizer = word_tokenizer, progressbar = FALSE)
 dtm = create_dtm(it_tokens, vectorizer = hash_vectorizer())
 str(dtm, list.len = 5)
 
-## ---- warning=FALSE, message=FALSE, eval=FALSE---------------------------
-#  N_WORKERS = 4
+## ---- eval=FALSE---------------------------------------------------------
+#  N_WORKERS = 2
 #  library(doParallel)
 #  # register parallel backend
 #  registerDoParallel(N_WORKERS)
 #  
-#  #  prepare splits
-#  # "jobs" is a list of itoken iterators!
-#  N_SPLITS = 4
+#  # note that we can control level of granularity with `n_chunks` argument
+#  it_token_par = itoken_parallel(movie_review$review, preprocessor = tolower,
+#                                 tokenizer = word_tokenizer, ids = movie_review$id,
+#                                 n_chunks = 8)
 #  
-#  jobs = files %>%
-#    split_into(N_SPLITS) %>%
-#    lapply(ifiles, reader = reader) %>%
-#    # Worth to set chunks_number to 1 because we already splitted input
-#    lapply(itoken, chunks_number = 1, preprocess_function = tolower,
-#           tokenizer = word_tokenizer, progessbar = FALSE)
+#  vocab = create_vocabulary(it_token_par)
+#  v_vectorizer = vocab_vectorizer(vocab)
+#  dtm = create_dtm(it_token_par, vectorizer = v_vectorizer)
 #  
-#  # Alternatively when data is in memory we can perform splite in the following way:
-#  #
-#  # review_chunks = split_into(movie_review$review, N_SPLITS)
-#  # review_ids = split_into(movie_review$id, N_SPLITS)
-#  #
-#  # jobs = Map(function(doc, ids) {
-#  #  itoken(iterable = doc, ids = ids, preprocess_function = tolower,
-#  #         tokenizer = word_tokenizer, chunks_number = 1, progessbar = FALSE)
-#  # }, review_chunks, review_ids)
+
+## ---- warning=FALSE, message=FALSE, eval=FALSE---------------------------
+#  N_WORKERS = 2
+#  library(doParallel)
+#  # register parallel backend
+#  registerDoParallel(N_WORKERS)
 #  
-#  # Now all below function calls will benefit from multicore machines
-#  # Each job will be evaluated in separate process
+#  it_files_par = ifiles_parallel(file_paths = files)
+#  it_token_par = itoken_parallel(it_files_par, preprocessor = tolower, tokenizer = word_tokenizer)
 #  
-#  # vocabulary creation
-#  vocab = create_vocabulary(jobs)
-#  
+#  vocab = create_vocabulary(it_token_par)
 #  # DTM vocabulary vectorization
 #  v_vectorizer = vocab_vectorizer(vocab)
-#  vocab_dtm_parallel = create_dtm(jobs, vectorizer = v_vectorizer)
+#  dtm_v = create_dtm(it_token_par, vectorizer = v_vectorizer)
 #  
 #  # DTM hash vectorization
 #  h_vectorizer = hash_vectorizer()
-#  hash_dtm_parallel = create_dtm(jobs, vectorizer = h_vectorizer)
+#  dtm_h = create_dtm(it_token_par, vectorizer = h_vectorizer)
 #  
 #  # co-ocurence statistics
-#  tcm_vectorizer = vocab_vectorizer(vocab, grow_dtm = FALSE, skip_grams_window = 5)
-#  tcm_parallel = create_tcm(jobs, vectorizer = tcm_vectorizer)
+#  tcm = create_tcm(it_token_par, vectorizer = v_vectorizer, skip_grams_window = 5)
 

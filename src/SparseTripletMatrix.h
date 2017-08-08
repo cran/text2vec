@@ -17,37 +17,27 @@
 #include <Rcpp.h>
 #include <string>
 #include <vector>
-#include <unordered_map>
+
+#define SPP_MIX_HASH
+#include <sparsepp/spp.h>
+
 #include "text2vec.h"
 
+using spp::sparse_hash_map;
 using namespace std;
 using namespace Rcpp;
 
-// for unordered_map < <uint32_t, uint32_t>, T >
+// for sparse_hash_map < <uint32_t, uint32_t>, T >
 namespace std {
   template <>
   struct hash<std::pair<uint32_t, uint32_t>>
   {
     inline uint64_t operator()(const std::pair<uint32_t, uint32_t>& k) const
     {
-      //should produce no collisions
-      //http://stackoverflow.com/a/24693169/1069256
-      //return f << (CHAR_BIT * sizeof(size_t) / 2) | s;
-      //http://stackoverflow.com/questions/2768890/how-to-combine-two-32-bit-integers-into-one-64-bit-integer?lq=1
       return (uint64_t) k.first << 32 | k.second;
     }
   };
 }
-
-
-// template<typename T>
-// NumericMatrix convert2Rmat(vector<vector<T> > &mat, size_t ncol) {
-//   NumericMatrix res(mat.size(), ncol);
-//   for (size_t i = 0; i < mat.size(); i++)
-//     for (size_t j = 0; j < ncol; j++)
-//       res(i, j) = mat[i][j];
-//   return res;
-// }
 
 template<typename T>
 class SparseTripletMatrix {
@@ -74,7 +64,7 @@ public:
     this->sparse_container[make_pair(i, j)] += increment;
   };
 
-  SEXP get_sparse_triplet_matrix(CharacterVector  &rownames, CharacterVector  &colnames);
+  S4 get_sparse_triplet_matrix(CharacterVector  &rownames, CharacterVector  &colnames);
 private:
   // dimensionality of matrix
   uint32_t nrow;
@@ -82,11 +72,11 @@ private:
   // number of non-zero elements in matrix
   size_t nnz;
   // container for sparse matrix in triplet form
-  unordered_map< pair<uint32_t, uint32_t>, T >  sparse_container;
+  sparse_hash_map< pair<uint32_t, uint32_t>, T >  sparse_container;
 };
 
 template<typename T>
-SEXP SparseTripletMatrix<T>::get_sparse_triplet_matrix(CharacterVector  &rownames, CharacterVector  &colnames) {
+S4 SparseTripletMatrix<T>::get_sparse_triplet_matrix(CharacterVector  &rownames, CharacterVector  &colnames) {
   // non-zero values count
   size_t NNZ = this->size();
 

@@ -1,8 +1,8 @@
 [![CRAN_Status_Badge](http://www.r-pkg.org/badges/version/text2vec)](https://cran.r-project.org/package=text2vec)
 [![Travis-CI Build Status](https://travis-ci.org/dselivanov/text2vec.svg?branch=master)](https://travis-ci.org/dselivanov/text2vec)
 [![codecov](https://codecov.io/gh/dselivanov/text2vec/branch/master/graph/badge.svg)](https://codecov.io/gh/dselivanov/text2vec/branch/master)
-[![License](http://img.shields.io/badge/license-GPL%20%28%3E=%202%29-brightgreen.svg?style=flat)](http://www.gnu.org/licenses/gpl-2.0.html)
-[![Downloads](http://cranlogs.r-pkg.org/badges/grand-total/text2vec)](https://cran.r-project.org/package=text2vec)
+[![License](https://img.shields.io/badge/license-GPL%3E%3D2-brightgreen.svg)](http://www.gnu.org/licenses/gpl-2.0.html)
+[![Downloads](http://cranlogs.r-pkg.org/badges/text2vec)](https://cran.r-project.org/package=text2vec)
 [![Follow](https://img.shields.io/twitter/follow/dselivanov_.svg?style=social)](https://twitter.com/intent/follow?screen_name=dselivanov_)
 
 
@@ -39,11 +39,13 @@ The core functionality at the moment includes
   - Euclidean
 
 # Performance
-![htop](https://raw.githubusercontent.com/dselivanov/text2vec/gh-pages/images/htop.png)
+![htop](https://raw.githubusercontent.com/dselivanov/text2vec/master/docs/images/htop.png)
 *Author of the package is a little bit obsessed about efficiency.*
 
-This package is efficient because it is carefully written in C++, which also means that text2vec is memory friendly. Some parts, such as training GloVe word embeddings, are fully parallelized using the excellent [RcppParallel](http://rcppcore.github.io/RcppParallel/) package. This means that the word embeddings are computed in parallel on OS X, Linux, Windows, and Solaris (x86) without any additional tuning or tricks.
-Other emrassingly parallel tasks such as vectorization can use any parallel backend wich supports [foreach](https://cran.r-project.org/package=foreach) package. So they can achieve near-linear scalability with number of available cores. 
+This package is efficient because it is carefully written in C++, which also means that text2vec is memory friendly. Some parts (such as GloVe) are fully parallelized using the excellent [RcppParallel](http://rcppcore.github.io/RcppParallel/) package. This means that the word embeddings are computed in parallel on OS X, Linux, Windows, and even Solaris (x86) without any additional tuning or tricks.
+
+Other emrassingly parallel tasks (such as vectorization) can use any parallel backend which supports [foreach](https://cran.r-project.org/package=foreach) package. They can achieve near-linear scalability with number of available cores. 
+
 Finally, a streaming API means that  users do not have to load all the data into RAM. 
 
 # Contributing
@@ -53,7 +55,7 @@ The package has [issue tracker on GitHub](https://github.com/dselivanov/text2vec
 Contributors are welcome. You can help by:
 
 - testing and leaving feedback on the [GitHub issuer tracker](https://github.com/dselivanov/text2vec/issues) (preferably) or directly by e-mail
-- forking and contributing (chech [code style guide](https://github.com/dselivanov/text2vec/wiki/Code-style-guide)). Vignettes, docs, tests, and use cases are very welcome
+- forking and contributing (check [code our style guide](https://github.com/dselivanov/text2vec/wiki/Code-style-guide)). Vignettes, docs, tests, and use cases are very welcome
 - by giving me a star on [project page](https://github.com/dselivanov/text2vec) :-)
 
 # License

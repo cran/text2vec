@@ -20,14 +20,14 @@
 #' @param x a matrix like object, should inherit from \code{Matrix} or \code{matrix}
 #' @param model instance of class \code{estimator} which should implement method
 #' with signature \code{$fit(x, y, ...)}
-#' @param y \code{NULL} by default. Optional response variable for supervised models.
-#' Should inherit from \code{vector} \code{Matrix} or \code{matrix}. See documentation
+#' @param y \code{NULL} by default. Optional response variable for supervised learning models.
+#' Should inherit from \code{vector} or \code{Matrix} or \code{matrix}. See documentation
 #' for corresponding models.
 #' @param ... additional data/model dependent arguments to downstream functions.
 #' @return \code{invisible(object$self())}
 #' @export
 fit = function(x, model, y = NULL, ...) {
-  stopifnot(inherits(model, "estimator"))
+  stopifnot(inherits(model, "mlapiEstimator") || inherits(model, "mlapiTransformer"))
   UseMethod("fit")
 }
 
@@ -57,7 +57,7 @@ fit.matrix = function(x, model, y = NULL, ...) {
 #' @return Transformed version of \code{x}
 #' @export
 fit_transform = function(x, model, y = NULL, ...) {
-  stopifnot(inherits(model, "transformer"))
+  stopifnot(inherits(model, "mlapiTransformer"))
   UseMethod("fit_transform")
 }
 
@@ -84,7 +84,7 @@ fit_transform.matrix = function(x, model, y = NULL, ...) {
 #' implements method \code{$transform(x, ...)}
 #' @param ... additional data/model dependent arguments to downstream functions.
 transform.Matrix = function(`_data`, model, ...) {
-  stopifnot(inherits(model, "transformer"))
+  stopifnot(inherits(model, "mlapiTransformer"))
   model$transform(`_data`, ...)
 }
 
@@ -92,7 +92,7 @@ transform.Matrix = function(`_data`, model, ...) {
 #' @export
 #' @method transform matrix
 transform.matrix = function(`_data`, model, ...) {
-  stopifnot(inherits(model, "transformer"))
+  stopifnot(inherits(model, "mlapiTransformer"))
   model$transform(`_data`, ...)
 }
 

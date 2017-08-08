@@ -22,12 +22,9 @@ knitr::opts_chunk$set(echo=TRUE, eval=FALSE, warning=FALSE, message=FALSE)
 
 ## ------------------------------------------------------------------------
 #  # Use our filtered vocabulary
-#  vectorizer <- vocab_vectorizer(vocab,
-#                                 # don't vectorize input
-#                                 grow_dtm = FALSE,
-#                                 # use window of 5 for context words
-#                                 skip_grams_window = 5L)
-#  tcm <- create_tcm(it, vectorizer)
+#  vectorizer <- vocab_vectorizer(vocab)
+#  # use window of 5 for context words
+#  tcm <- create_tcm(it, vectorizer, skip_grams_window = 5L)
 
 ## ---- message=TRUE-------------------------------------------------------
 #  glove = GlobalVectors$new(word_vectors_size = 50, vocabulary = vocab, x_max = 10)

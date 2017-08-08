@@ -15,6 +15,10 @@
 // along with text2vec.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "text2vec.h"
+
+// see https://github.com/maciejkula/glove-python/pull/9#issuecomment-68058795
+// clips the cost for numerical stability
+#define CLIP_GRADIENT 100
 using namespace RcppParallel;
 using namespace Rcpp;
 using namespace std;
@@ -29,7 +33,6 @@ class GloveFit {
            size_t word_vec_size,
            float learning_rate,
            uint32_t x_max,
-           float max_cost,
            float alpha,
            float lambda,
            NumericMatrix w_i_init,
@@ -37,7 +40,7 @@ class GloveFit {
            NumericVector b_i_init,
            NumericVector b_j_init):
     vocab_size(vocab_size), word_vec_size(word_vec_size),
-    x_max(x_max), learning_rate(learning_rate), max_cost(max_cost),
+    x_max(x_max), learning_rate(learning_rate),
     alpha(alpha), lambda(lambda) {
 
     b_i.resize(vocab_size);
@@ -136,17 +139,9 @@ class GloveFit {
         i_iter_order = iter_order [ i ] - 1;
       else
         i_iter_order = i;
-      // we assume input matrix initially is **symmetrical and upper-triangular**
-      // partial_fit will be called 2 times - on this upper-triangular matrix and on transposed one.
-      // So if we want to iterate with random order we will swap indices to
-      // emulate upper-diagonal and lower-diagonal elements
-      if ( is_odd( i_iter_order ) ) {
-        x_irow_i = x_irow[ i_iter_order ];
-        x_icol_i = x_icol[ i_iter_order ];
-      } else {
-        x_irow_i = x_icol[ i_iter_order ];
-        x_icol_i = x_irow[ i_iter_order ];
-      }
+
+      x_irow_i = x_irow[ i_iter_order ];
+      x_icol_i = x_icol[ i_iter_order ];
 
       weight = weighting_fun(x_val[ i_iter_order ], x_max, this->alpha);
       // when we fit with L1 regularization, we simulteniously grow
@@ -157,10 +152,10 @@ class GloveFit {
                                    // init with (b_i + b_j - log(x_ij))
                                    b_i[ x_irow_i ] + b_i[ x_icol_i ] - log( x_val[ i_iter_order ] ) );
         //clip cost for numerical stability
-        if (cost_inner > this->max_cost)
-          cost_inner = max_cost;
-        else if (cost_inner < -(this->max_cost))
-          cost_inner = -max_cost;
+        if (cost_inner > CLIP_GRADIENT)
+          cost_inner = CLIP_GRADIENT;
+        else if (cost_inner < -CLIP_GRADIENT)
+          cost_inner = -CLIP_GRADIENT;
 
         cost = weight * cost_inner;
 
@@ -210,16 +205,18 @@ class GloveFit {
         // Update squared gradient sums for biases
         grad_sq_b_i[ x_irow_i ] += grad_b_i * grad_b_i;
         grad_sq_b_i[ x_icol_i ] += grad_b_j * grad_b_j;
-      } else {
+      } else
+        // vanilla GloVe
+      {
         cost_inner = inner_product(w_i[ x_irow_i ].begin(), w_i[ x_irow_i ].end() ,
                                    w_j[ x_icol_i].begin(),
                                    // init with (b_i + b_j - log(x_ij))
                                    b_i[ x_irow_i ] + b_j[ x_icol_i ] - log( x_val[ i_iter_order ] ) );
         //clip cost for numerical stability
-        if (cost_inner > this->max_cost)
-          cost_inner = max_cost;
-        else if (cost_inner < -(this->max_cost))
-          cost_inner = -max_cost;
+        if (cost_inner > CLIP_GRADIENT)
+          cost_inner = CLIP_GRADIENT;
+        else if (cost_inner < -CLIP_GRADIENT)
+          cost_inner = -CLIP_GRADIENT;
 
         cost = weight * cost_inner;
 
@@ -262,11 +259,12 @@ class GloveFit {
     NumericMatrix wv(this->w_i.size(), this->word_vec_size);
     for (size_t i = 0; i < this->w_i.size(); i++)
       for (size_t j = 0; j < this->word_vec_size; j++)
-        if(this->FLAG_DO_L1_REGURARIZATION)
-          wv(i, j) = this->w_i[i][j];
-        else
-          // sum of context and main word vectors
-          wv(i, j) = this->w_i[i][j] + this->w_j[i][j];
+        wv(i, j) = this->w_i[i][j];
+        // if(this->FLAG_DO_L1_REGURARIZATION)
+        //   wv(i, j) = this->w_i[i][j];
+        // else
+        //   // sum of context and main word vectors
+        //   wv(i, j) = this->w_i[i][j] + this->w_j[i][j];
     return wv;
   }
 
@@ -280,9 +278,6 @@ class GloveFit {
     size_t vocab_size, word_vec_size;
     uint32_t x_max;
     float learning_rate;
-    // see https://github.com/maciejkula/glove-python/pull/9#issuecomment-68058795
-    // clips the cost for numerical stability
-    float max_cost;
     // initial learning rate
     float alpha;
     // word vecrtors

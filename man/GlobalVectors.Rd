@@ -2,8 +2,8 @@
 % Please edit documentation in R/model_GloVe.R
 \docType{data}
 \name{GlobalVectors}
-\alias{GloVe}
 \alias{GlobalVectors}
+\alias{GloVe}
 \title{Creates Global Vectors word-embeddings model.}
 \format{\code{\link{R6Class}} object.}
 \usage{
@@ -12,33 +12,36 @@ GloVe
 \description{
 Class for GloVe word-embeddings model.
 It can be trained via fully can asynchronous and parallel
-AdaGrad with \code{$fit()} method.
+AdaGrad with \code{$fit_transform()} method.
 }
 \section{Fields}{
 
 \describe{
-\item{\code{dump_every_n}}{\code{integer = 0L} by default. Defines frequency of dumping word vectors. For example user
+\item{\code{components}}{represents context word vectors}
+
+\item{\code{n_dump_every}}{\code{integer = 0L} by default. Defines frequency of dumping word vectors. For example user
 can ask to dump word vectors each 5 iteration.}
 
 \item{\code{shuffle}}{\code{logical = FALSE} by default. Defines shuffling before each SGD iteration.
-Generelly shuffling is a good idea for stochastic-gradient descent, but
+Generally shuffling is a good idea for stochastic-gradient descent, but
 from my experience in this particular case it does not improve convergence.}
 
 \item{\code{grain_size}}{\code{integer = 1e5L} by default. This is the
 grain_size for \code{RcppParallel::parallelReduce}. For details, see
 \url{http://rcppcore.github.io/RcppParallel/#grain-size}.
-\bold{We don't recommend to change this paramenter.}}
-
-\item{\code{verbose}}{\code{logical = TRUE} whether to display training inforamtion}
+\bold{We don't recommend to change this parameter.}}
 }}
+
 \section{Usage}{
 
 For usage details see \bold{Methods, Arguments and Examples} sections.
 \preformatted{
-glove = GlobalVectors$new(word_vectors_size, vocabulary, x_max)
-glove$fit(x, n_iter)
-glove$get_word_vectors()
-glove$dump_model()
+glove = GlobalVectors$new(word_vectors_size, vocabulary, x_max, learning_rate = 0.15,
+                          alpha = 0.75, lambda = 0.0, shuffle = FALSE, initial = NULL)
+glove$fit_transform(x, n_iter = 10L, convergence_tol = -1, n_check_convergence = 1L,
+              n_threads = RcppParallel::defaultNumThreads(), ...)
+glove$components
+glove$dump()
 }
 }
 
@@ -46,13 +49,13 @@ glove$dump_model()
 
 \describe{
   \item{\code{$new(word_vectors_size, vocabulary, x_max, learning_rate = 0.15,
-                    max_cost = 10, alpha = 0.75, lambda = 0, shuffle = FALSE,
+                    alpha = 0.75, lambda = 0, shuffle = FALSE,
                     initial = NULL)}}{Constructor for Global vectors model.
                     For description of arguments see \bold{Arguments} section.}
-  \item{\code{$fit(x, n_iter, convergence_tol = -1)}}{fit Glove model to input matrix \code{x}}
-  \item{\code{$get_word_vectors()}}{get word vector - obtain GloVe word embeddings}
-  \item{\code{$dump_model()}}{get model internals - word vectors and biases for main and context words}
-  \item{\code{$get_history}}{get history of SGD costs and word vectors (if \code{dump_every_n > 0)}}
+  \item{\code{$fit_transform(x, n_iter = 10L, convergence_tol = -1, n_check_convergence = 1L,
+              n_threads = RcppParallel::defaultNumThreads(), ...)}}{fit Glove model to input matrix \code{x}}
+  \item{\code{$dump()}}{get model internals - word vectors and biases for main and context words}
+  \item{\code{$get_history}}{get history of SGD costs and word vectors (if \code{n_dump_every > 0)}}
 }
 }
 
@@ -62,7 +65,7 @@ glove$dump_model()
  \item{glove}{A \code{GloVe} object}
  \item{x}{An input term co-occurence matrix. Preferably in \code{dgTMatrix} format}
  \item{n_iter}{\code{integer} number of SGD iterations}
- \item{word_vectors_size}{desired dimenson for word vectors}
+ \item{word_vectors_size}{desired dimension for word vectors}
  \item{vocabulary}{\code{character} vector or instance of
    \code{text2vec_vocabulary} class. Each word should correspond to dimension
    of co-occurence matrix.}
@@ -74,13 +77,10 @@ glove$dump_model()
     when one of two following conditions will be satisfied: (a) we have used
     all iterations, or (b) \code{cost_previous_iter / cost_current_iter - 1 <
     convergence_tol}. By default perform all iterations.}
- \item{max_cost}{\code{numeric = 10} the maximum absolute value of calculated gradient for any
-    single co-occurrence pair. Try to set this to a smaller value if you have
-    problems with numerical stability}
  \item{alpha}{\code{numeric = 0.75} the alpha in weighting function formula : \eqn{f(x) = 1 if x >
   x_max; else (x/x_max)^alpha}}
  \item{lambda}{\code{numeric = 0.0}, L1 regularization coefficient.
-   \code{0} = vanilla GloVe, corrsesponds to original paper and implementation.
+   \code{0} = vanilla GloVe, corresponds to original paper and implementation.
    \code{lambda >0} corresponds to text2vec new feature and different SGD algorithm. From our experience
    small lambda (like \code{lambda = 1e-5}) usually produces better results that vanilla GloVe
    on small corpuses}
@@ -91,25 +91,26 @@ glove$dump_model()
     on smaller task-specific dataset}
 }
 }
+
 \examples{
 \dontrun{
 temp = tempfile()
 download.file('http://mattmahoney.net/dc/text8.zip', temp)
 text8 = readLines(unz(temp, "text8"))
 it = itoken(text8)
-vocab = create_vocabulary(it) \%>\%
- prune_vocabulary(term_count_min = 5)
-v_vect = vocab_vectorizer(vocab, grow_dtm = FALSE, skip_grams_window = 5L)
-tcm = create_tcm(it, v_vect)
-
-glove_model = GloVe(word_vectors_size = 50, vocabulary = vocab, x_max = 10, learning_rate = .25)
+vocabulary = create_vocabulary(it) \%>\%
+  prune_vocabulary(term_count_min = 5)
+v_vect = vocab_vectorizer(vocabulary)
+tcm = create_tcm(it, v_vect, skip_grams_window = 5L)
+glove_model = GloVe$new(word_vectors_size = 50,
+  vocabulary = vocabulary, x_max = 10, learning_rate = .25)
 # fit model and get word vectors
-fit(tcm, glove_model, n_iter = 10)
-wv = glove_model$get_word_vectors()
+word_vectors_main = glove_model$fit_transform(tcm, n_iter = 10)
+word_vectors_context = glove_model$components
+word_vectors = word_vectors_main + t(word_vectors_context)
 }
 }
 \seealso{
 \url{http://nlp.stanford.edu/projects/glove/}
 }
 \keyword{datasets}
-

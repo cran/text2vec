@@ -2,8 +2,8 @@
 % Please edit documentation in R/model_LSA.R
 \docType{data}
 \name{LatentSemanticAnalysis}
-\alias{LSA}
 \alias{LatentSemanticAnalysis}
+\alias{LSA}
 \title{Latent Semantic Analysis model}
 \format{\code{\link{R6Class}} object.}
 \usage{
@@ -15,18 +15,14 @@ LSA
 Creates LSA(Latent semantic analysis) model.
 See \url{https://en.wikipedia.org/wiki/Latent_semantic_analysis} for details.
 }
-\section{Fields}{
-
-\describe{
-\item{\code{verbose}}{\code{logical = TRUE} whether to display training inforamtion}
-}}
 \section{Usage}{
 
 For usage details see \bold{Methods, Arguments and Examples} sections.
 \preformatted{
-lsa = LatentSemanticAnalysis$new(n_topics)
-lsa$fit_transform(x)
-lsa$get_word_vectors()
+lsa = LatentSemanticAnalysis$new(n_topics, method = c("randomized", "irlba"))
+lsa$fit_transform(x, ...)
+lsa$transform(x, ...)
+lsa$components
 }
 }
 
@@ -34,8 +30,7 @@ lsa$get_word_vectors()
 
 \describe{
   \item{\code{$new(n_topics)}}{create LSA model with \code{n_topics} latent topics}
-  \item{\code{$fit(x, ...)}}{fit model to an input DTM (preferably in "dgCMatrix" format)}
-  \item{\code{$fit_transform(x, ...)}}{fit model to an input sparse matrix (preferably in "dgCMatrix"
+  \item{\code{$fit_transform(x, ...)}}{fit model to an input sparse matrix (preferably in \code{dgCMatrix}
    format) and then transform \code{x} to latent space}
   \item{\code{$transform(x, ...)}}{transform new data \code{x} to latent space}
 }
@@ -45,12 +40,15 @@ lsa$get_word_vectors()
 
 \describe{
  \item{lsa}{A \code{LSA} object.}
- \item{x}{An input document-term matrix.}
+ \item{x}{An input document-term matrix. Preferably in \code{dgCMatrix} format}
  \item{n_topics}{\code{integer} desired number of latent topics.}
- \item{...}{Arguments to internal functions. Notably useful for \code{fit(), fit_transform()} -
- these arguments will be passed to \link{irlba} function which is used as backend for SVD.}
+ \item{method}{\code{character}, one of \code{c("randomized", "irlba")}. Defines underlying SVD algorithm.
+ For very large data "randomized" usually works faster and more accurate. }
+ \item{...}{Arguments to internal functions. Notably useful for \code{fit_transform()} -
+ these arguments will be passed to \link{irlba} or \link{svdr} functions which are used as backend for SVD.}
 }
 }
+
 \examples{
 data("movie_review")
 N = 100
@@ -58,13 +56,9 @@ tokens = movie_review$review[1:N] \%>\% tolower \%>\% word_tokenizer
 dtm = create_dtm(itoken(tokens), hash_vectorizer())
 n_topics = 10
 lsa_1 = LatentSemanticAnalysis$new(n_topics)
-fit(dtm, lsa_1) # or lsa_1$fit(dtm)
-d1 = lsa_1$transform(dtm)
-lsa_2 = LatentSemanticAnalysis$new(n_topics)
-d2 = lsa_2$fit_transform(dtm)
-all.equal(d1, d2)
+d1 = lsa_1$fit_transform(dtm)
 # the same, but wrapped with S3 methods
-all.equal(fit_transform(dtm, lsa_2), fit_transform(dtm, lsa_1))
+d2 = fit_transform(dtm, lsa_1)
+
 }
 \keyword{datasets}
-

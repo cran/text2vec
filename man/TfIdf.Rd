@@ -16,17 +16,11 @@ The IDF is defined as follows: \code{idf = log(# documents in the corpus) /
 \details{
 Term Frequency Inverse Document Frequency
 }
-\section{Fields}{
-
-\describe{
-\item{\code{verbose}}{\code{logical = TRUE} whether to display training inforamtion}
-}}
 \section{Usage}{
 
 For usage details see \bold{Methods, Arguments and Examples} sections.
 \preformatted{
 tfidf = TfIdf$new(smooth_idf = TRUE, norm = c('l1', 'l2', 'none'), sublinear_tf = FALSE)
-tfidf$fit(x)
 tfidf$fit_transform(x)
 tfidf$transform(x)
 }
@@ -36,7 +30,6 @@ tfidf$transform(x)
 
 \describe{
   \item{\code{$new(smooth_idf = TRUE, norm = c("l1", "l2", "none"), sublinear_tf = FALSE)}}{Creates tf-idf model}
-  \item{\code{$fit(x)}}{fit tf-idf model to an input DTM (preferably in "dgCMatrix" format)}
   \item{\code{$fit_transform(x)}}{fit model to an input sparse matrix (preferably in "dgCMatrix"
    format) and then transforms it.}
   \item{\code{$transform(x)}}{transform new data \code{x} using tf-idf from train data}
@@ -47,7 +40,7 @@ tfidf$transform(x)
 
 \describe{
  \item{tfidf}{A \code{TfIdf} object}
- \item{x}{An input term-cooccurence matrix. Preferably in \code{dgCMatrix} format}
+ \item{x}{An input term-co-occurence matrix. Preferably in \code{dgCMatrix} format}
  \item{smooth_idf}{\code{TRUE} smooth IDF weights by adding one to document
   frequencies, as if an extra document was seen containing every term in the
   collection exactly once. This prevents division by zero.}
@@ -57,16 +50,13 @@ tfidf$transform(x)
  replace the term frequency with \code{1 + log(TF)}}
 }
 }
+
 \examples{
 data("movie_review")
 N = 100
 tokens = movie_review$review[1:N] \%>\% tolower \%>\% word_tokenizer
 dtm = create_dtm(itoken(tokens), hash_vectorizer())
 model_tfidf = TfIdf$new()
-model_tfidf$fit(dtm)
-dtm_1 = model_tfidf$transform(dtm)
-dtm_2 = model_tfidf$fit_transform(dtm)
-identical(dtm_1, dtm_2)
+dtm_tfidf = model_tfidf$fit_transform(dtm)
 }
 \keyword{datasets}
-
