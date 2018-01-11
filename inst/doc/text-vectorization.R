@@ -7,6 +7,7 @@ op = options(width = 80, str = strOptions(strict.width = "cut"))
 ## ---- loading-data, eval=TRUE, message=FALSE----------------------------------
 library(text2vec)
 library(data.table)
+library(magrittr)
 data("movie_review")
 setDT(movie_review)
 setkey(movie_review, id)
@@ -74,11 +75,10 @@ print(paste("max AUC =", round(max(glmnet_classifier$cvm), 4)))
 ## ---- test_1, message=FALSE, warning=FALSE, eval=TRUE-------------------------
 # Note that most text2vec functions are pipe friendly!
 it_test = test$review %>% 
-  prep_fun %>% 
-  tok_fun %>% 
-  itoken(ids = test$id, 
-         # turn off progressbar because it won't look nice in rmd
-         progressbar = FALSE)
+  prep_fun %>% tok_fun %>% 
+  # turn off progressbar because it won't look nice in rmd
+  itoken(ids = test$id, progressbar = FALSE)
+         
 
 dtm_test = create_dtm(it_test, vectorizer)
 
@@ -116,8 +116,8 @@ t1 = Sys.time()
 vocab = create_vocabulary(it_train, ngram = c(1L, 2L))
 print(difftime(Sys.time(), t1, units = 'sec'))
 
-vocab = vocab %>% prune_vocabulary(term_count_min = 10, 
-                   doc_proportion_max = 0.5)
+vocab = prune_vocabulary(vocab, term_count_min = 10, 
+                         doc_proportion_max = 0.5)
 
 bigram_vectorizer = vocab_vectorizer(vocab)
 
@@ -184,8 +184,8 @@ tfidf = TfIdf$new()
 dtm_train_tfidf = fit_transform(dtm_train, tfidf)
 # tfidf modified by fit_transform() call!
 # apply pre-trained tf-idf transformation to test data
-dtm_test_tfidf  = create_dtm(it_test, vectorizer) %>% 
-  transform(tfidf)
+dtm_test_tfidf = create_dtm(it_test, vectorizer)
+dtm_test_tfidf = transform(dtm_test_tfidf, tfidf)
 
 ## ---- fit_2, message=FALSE, warning=FALSE, eval=TRUE--------------------------
 t1 = Sys.time()

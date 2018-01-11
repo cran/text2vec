@@ -7,7 +7,7 @@
 # @param type character, one of \code{c("dgCMatrix", "dgTMatrix")}.
 # @examples
 # N = 1000
-# tokens = movie_review$review[1:N] %>% tolower %>% word_tokenizer
+# tokens = word_tokenizer(tolower(movie_review$review[1:N]))
 # it = itoken(tokens)
 # v = create_vocabulary(it)
 # '
@@ -28,7 +28,13 @@ get_dtm = function(corpus_ptr) {
 
   if (length(dtm@x) == 0)
     warning("dtm has 0 rows. Empty iterator?", immediate. = TRUE)
-  dtm@Dimnames[[1]] = attr(corpus_ptr, 'ids')
+
+  rn = attr(corpus_ptr, 'ids')
+  cn = dtm@Dimnames[[2]]
+
+  if(length(cn) != ncol(dtm))
+    cn = NULL
+  dtm@Dimnames = list(rn, cn)
   dtm
 }
 
@@ -136,28 +142,13 @@ create_dtm.list = function(it, vectorizer,
 #------------------------------------------------------------------------------
 
 #' @rdname create_dtm
-#' @param distributed whether to keep matrix row-distributed.
-#' Row-distributed matrices can be used in distributed LDA.
 #' @export
 create_dtm.itoken_parallel = function(it, vectorizer,
                            type = c("dgCMatrix", "dgTMatrix"),
-                           distributed = FALSE,
                            ...) {
-
-  if(distributed) {
-    if(foreach::getDoParName() == "doParallelMC")
-      stop("Please register cluster explicitly with `cl = makeCluster(N_WORKERS); registerDoParallel(cl)`
-           At the moment didtributed mode can be used only with socket 'snow' clusters.")
-  }
-
   type = match.arg(type)
   combine_fun = function(...) {
-    if(distributed) {
-      list(...)
-    }
-    else {
       rbind_dgTMatrix(...)
-    }
   }
 
   res =
@@ -168,70 +159,7 @@ create_dtm.itoken_parallel = function(it, vectorizer,
             # preschedule = FALSE is much more memory efficient
             .options.multicore = list(preschedule = FALSE),
             ...) %dopar% {
-              dtm_local = create_dtm(batch, vectorizer, "dgTMatrix")
-              if(distributed) {
-                text2vec_distributed_environment <<- new.env(parent = emptyenv())
-                key = uuid::UUIDgenerate()
-                text2vec_distributed_environment[[key]] = as(dtm_local, type)
-                reference = list(key = key, env = "text2vec_distributed_environment")
-              } else {
-                dtm_local
-              }
+              create_dtm(batch, vectorizer, "dgTMatrix")
             }
-  if(distributed) {
-    setattr(res, "class", "RowDistributedMatrix")
-    setattr(res, "subclass", type)
-  }
-  else
-    as(res, type)
-}
-
-#' @export
-#' @name collect
-#' @title Collects distributed data structure to master process
-#' @description Collects distributed data structure to master process
-#' @param x pointer to distributed data structure (only row-distributed matrices at the moment)
-#' @param ... other options (not used at the moment)
-collect = function(x, ...) {
-  UseMethod("collect")
-}
-
-#' @export
-#' @rdname collect
-collect.RowDistributedMatrix = function(x, ...) {
-  combine_fun = function(...) {
-    subclass = attributes(x)[["subclass"]]
-    switch (subclass,
-            dgTMatrix = rbind_dgTMatrix(...),
-            dgCMatrix = rbind(...),
-            stop(sprintf("don't know how to collect '%s'", subclass))
-    )
-  }
-  foreach(x_remote = x, .combine = combine_fun, .multicombine = TRUE) %dopar% {
-    get(x_remote$env)[[x_remote$key]]
-  }
-}
-
-#' @export
-#' @method dimnames RowDistributedMatrix
-dimnames.RowDistributedMatrix = function(x) {
-  row_names = foreach(x_remote = x, .combine = c, .multicombine = TRUE, .inorder = TRUE) %dopar% {
-    rownames(get(x_remote$env)[[x_remote$key]])
-  }
-  col_names = foreach(x_remote = x[1], .combine = c, .multicombine = TRUE, .inorder = TRUE) %dopar% {
-    colnames(get(x_remote$env)[[x_remote$key]])
-  }
-  list(row_names, col_names)
-}
-
-#' @export
-#' @method dimnames RowDistributedMatrix
-dim.RowDistributedMatrix = function(x) {
-  nr = foreach(x_remote = x, .combine = sum, .multicombine = TRUE, .inorder = TRUE) %dopar% {
-    nrow(get(x_remote$env)[[x_remote$key]])
-  }
-  nc = foreach(x_remote = x[1], .combine = c, .multicombine = TRUE, .inorder = TRUE) %dopar% {
-    ncol(get(x_remote$env)[[x_remote$key]])
-  }
-  c(nr, nc)
+  as(res, type)
 }

@@ -34,8 +34,8 @@ NULL
 #' @import data.table
 #' @importFrom foreach foreach %do% %dopar%
 #' @importFrom R6 R6Class
+#' @import mlapi
 #' @importFrom RcppParallel RcppParallelLibs
-#' @importFrom magrittr %>%
 #' @importFrom utils txtProgressBar setTxtProgressBar
 #' @importFrom methods as
 #' @importFrom futile.logger flog.debug flog.info flog.warn flog.error
@@ -43,7 +43,11 @@ NULL
 NULL
 
 #' @export
-magrittr::`%>%`
+mlapi::fit
+#' @export
+mlapi::fit_transform
+
+
 
 if (getRversion() >= "2.15.1") {
   trick_pass_r_cmd_check =

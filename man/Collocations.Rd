@@ -22,28 +22,30 @@ Useful for filtering non-relevant phrases}
 
 For usage details see \bold{Methods, Arguments and Examples} sections.
 \preformatted{
-colloc = Collocations$new(vocabulary = NULL, collocation_count_min = 50, pmi_min = 5, gensim_min = 0, lfmd_min = -Inf, sep = "_")
-colloc$partial_fit(it, ...)
-colloc$fit(it, n_iter = 1, ...)
-colloc$transform(it)
-colloc$prune(pmi_min = 5, gensim_min = 0, lfmd_min = -Inf)
-colloc$collocation_stat
+model = Collocations$new(vocabulary = NULL, collocation_count_min = 50, pmi_min = 5, gensim_min = 0,
+                         lfmd_min = -Inf, llr_min = 0, sep = "_")
+model$partial_fit(it, ...)
+model$fit(it, n_iter = 1, ...)
+model$transform(it)
+model$prune(pmi_min = 5, gensim_min = 0, lfmd_min = -Inf, llr_min = 0)
+model$collocation_stat
 }
 }
 
 \section{Methods}{
 
 \describe{
-  \item{\code{$new(vocabulary = NULL, collocation_count_min = 50, sep = "_")}}{Constructor for Collocations model.For description of arguments see \bold{Arguments} section.}
+  \item{\code{$new(vocabulary = NULL, collocation_count_min = 50, sep = "_")}}{Constructor for Collocations model.
+  For description of arguments see \bold{Arguments} section.}
   \item{\code{$fit(it, n_iter = 1, ...)}}{fit Collocations model to input iterator \code{it}.
   Iterating over input iterator \code{it} \code{n_iter} times, so hierarchically can learn multi-word phrases.
   Invisibly returns \code{collocation_stat}.}
   \item{\code{$partial_fit(it, ...)}}{iterates once over data and learns collocations. Invisibly returns \code{collocation_stat}.
-  Workhorse for \code{$fit()}}.
+  Workhorse for \code{$fit()}}
   \item{\code{$transform(it)}}{transforms input iterator using learned collocations model.
   Result of the transformation is new \code{itoken} or \code{itoken_parallel} iterator which will
   produce tokens with phrases collapsed into single token.}
-  \item{\code{$prune(pmi_min = 5, gensim_min = 0, lfmd_min = -Inf)}}{
+  \item{\code{$prune(pmi_min = 5, gensim_min = 0, lfmd_min = -Inf, llr_min = 0)}}{
   filter out non-relevant phrases with low score. User can do it directly by modifying \code{collocation_stat} object.}
 }
 }
@@ -51,10 +53,19 @@ colloc$collocation_stat
 \section{Arguments}{
 
 \describe{
- \item{colloc}{A \code{Collocation} model object}
+ \item{model}{A \code{Collocation} model object}
  \item{n_iter}{number of iteration over data}
- \item{pmi_min, gensim_min, lfmd_min}{minimal scores of the corresponding statistics in order to collapse tokens into collocation
- see data in \code{colloc$collocation_stat} for better understanding}
+ \item{pmi_min, gensim_min, lfmd_min, llr_min}{minimal scores of the corresponding
+ statistics in order to collapse tokens into collocation:
+ \itemize{
+  \item pointwise mutual information
+  \item "gensim" scores - \url{https://radimrehurek.com/gensim/models/phrases.html} adapted from word2vec paper
+  \item log-frequency biased mutual dependency
+  \item Dunning's  logarithm of the ratio between the likelihoods of the hypotheses of dependence and independence
+ }
+ See \url{http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.11.8101&rep=rep1&type=pdf},
+ \url{http://www.aclweb.org/anthology/I05-1050} for details.
+ Also see data in \code{model$collocation_stat} for better intuition}
  \item{it}{An input \code{itoken} or \code{itoken_parallel} iterator}
  \item{vocabulary}{\code{text2vec_vocabulary} - if provided will look for collocations consisted of only from vocabulary}
 }
@@ -65,19 +76,19 @@ library(text2vec)
 data("movie_review")
 
 preprocessor = function(x) {
-  tolower(x) \%>\% gsub("[^[:alnum:]\\\\s]", replacement = " ", .)
+  gsub("[^[:alnum:]\\\\s]", replacement = " ", tolower(x))
 }
 sample_ind = 1:100
-tokens = movie_review$review[sample_ind] \%>\% preprocessor \%>\% word_tokenizer
+tokens = word_tokenizer(preprocessor(movie_review$review[sample_ind]))
 it = itoken(tokens, ids = movie_review$id[sample_ind])
 system.time(v <- create_vocabulary(it))
 v = prune_vocabulary(v, term_count_min = 5)
 
-cc = Collocations$new(collocation_count_min = 5, pmi_min = 5)
-cc$fit(it, n_iter = 2)
-cc$collocation_stat
+model = Collocations$new(collocation_count_min = 5, pmi_min = 5)
+model$fit(it, n_iter = 2)
+model$collocation_stat
 
-it2 = cc$transform(it)
+it2 = model$transform(it)
 v2 = create_vocabulary(it2)
 v2 = prune_vocabulary(v2, term_count_min = 5)
 # check what phrases model has learned

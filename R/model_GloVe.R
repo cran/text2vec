@@ -87,8 +87,8 @@
 #' download.file('http://mattmahoney.net/dc/text8.zip', temp)
 #' text8 = readLines(unz(temp, "text8"))
 #' it = itoken(text8)
-#' vocabulary = create_vocabulary(it) %>%
-#'   prune_vocabulary(term_count_min = 5)
+#' vocabulary = create_vocabulary(it)
+#' vocabulary = prune_vocabulary(vocabulary, term_count_min = 5)
 #' v_vect = vocab_vectorizer(vocabulary)
 #' tcm = create_tcm(it, v_vect, skip_grams_window = 5L)
 #' glove_model = GloVe$new(word_vectors_size = 50,
@@ -168,7 +168,7 @@ GlobalVectors = R6::R6Class(
     fit_transform = function(x, n_iter = 10L, convergence_tol = -1, n_check_convergence = 1L,
                    n_threads = RcppParallel::defaultNumThreads(), ...) {
       # convert to internal native format
-      x = super$check_convert_input(x, private$internal_matrix_formats)
+      x = super$check_convert_input(x)
 
       IS_TRIANGULAR = isTriangular(x)
       # params in a specific format to pass to C++ backend

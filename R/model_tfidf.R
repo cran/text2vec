@@ -50,13 +50,13 @@
 #' @examples
 #' data("movie_review")
 #' N = 100
-#' tokens = movie_review$review[1:N] %>% tolower %>% word_tokenizer
+#' tokens = word_tokenizer(tolower(movie_review$review[1:N]))
 #' dtm = create_dtm(itoken(tokens), hash_vectorizer())
 #' model_tfidf = TfIdf$new()
 #' dtm_tfidf = model_tfidf$fit_transform(dtm)
 TfIdf = R6::R6Class(
   classname = c("TfIdf"),
-  inherit = mlapiTransformer,
+  inherit = mlapiTransformation,
   public = list(
     #----------------------------------------------------------------------------
     # methods
@@ -91,7 +91,7 @@ TfIdf = R6::R6Class(
     smooth_idf = TRUE,
     fitted = FALSE,
     prepare_x = function(x) {
-      x_internal = super$check_convert_input(x, private$internal_matrix_formats)
+      x_internal = super$check_convert_input(x)
       if(private$sublinear_tf)
         x_internal@x = 1 + log(x_internal@x)
       normalize(x_internal, private$norm)

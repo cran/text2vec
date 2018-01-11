@@ -3,7 +3,9 @@
 \docType{import}
 \name{reexports}
 \alias{reexports}
-\alias{\%>\%}
+\alias{fit}
+\alias{reexports}
+\alias{fit_transform}
 \title{Objects exported from other packages}
 \keyword{internal}
 \description{
@@ -11,6 +13,6 @@ These objects are imported from other packages. Follow the links
 below to see their documentation.
 
 \describe{
-  \item{magrittr}{\code{\link[magrittr]{\%>\%}}}
+  \item{mlapi}{\code{\link[mlapi]{fit}}, \code{\link[mlapi]{fit_transform}}}
 }}
 

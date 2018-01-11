@@ -1,3 +1,19 @@
+# text2vec 0.5.1 [2018-01-10]
+
+1. 2018-01-10
+    * removed rank* columns from `collocation_stat` - were never used internally. Users can easily calculate ranks themselves
+1. 2018-01-09
+    * Added Bi-Normal Separation transformation, thanks to Pavel Shashkin ( @pshashk )
+    * Added Dunning's log-likelihood ratio for collocations, thanks to Chris Lee ( @Chrisss93 )
+    * Early stopping for collocations learning
+1. 2017-12-18
+    * fixed several bugs #219 #217 #205
+    * decreased number of dependencies - no more `magrittr`, `uuid`, `tokenizers`
+    * removed distributed LDA which didn't work correctly
+1. 2017-10-18
+    * Now tokenization is based on [tokenizers](https://github.com/ropensci/tokenizers) and **THE** [stringi](https://github.com/gagolews/stringi) packages.
+    * models API follow [mlapi](https://github.com/dselivanov/mlapi) package. No API changes on `text2vec` side - we just put abstract `scikit-learn`-like classes to a separate package in order to make them more reusable.
+
 # text2vec 0.5.0
 
 1. 2017-06-12

@@ -26,7 +26,10 @@
 #'@param ngram \code{integer} vector. The lower and upper boundary of the range
 #'  of n-values for different n-grams to be extracted. All values of \code{n}
 #'  such that ngram_min <= n <= ngram_max will be used.
-#'@param stopwords \code{character} vector of stopwords to filter out
+#'@param stopwords \code{character} vector of stopwords to filter out. \bold{NOTE} that
+#' stopwords will be used "as is". This means that if preprocessing function in \link{itoken} does some
+#' text modification (like stemming), then this preprocessing need to be applied to stopwrods before passing them here.
+#' See \url{https://github.com/dselivanov/text2vec/issues/228} for example.
 #'@param sep_ngram \code{character} a character string to concatenate words in ngrams
 #'@return \code{text2vec_vocabulary} object, which is actually a \code{data.frame}
 #'  with following columns:
@@ -83,7 +86,8 @@ create_vocabulary.character = function(it, ngram = c("ngram_min" = 1L, "ngram_ma
 
   res = data.frame("term" = it,
                    "term_count" = rep(NA_integer_, vocab_length),
-                   "doc_count" = rep(NA_integer_, vocab_length))
+                   "doc_count" = rep(NA_integer_, vocab_length),
+                   stringsAsFactors = FALSE)
   res = res[order(res$term_count), ]
 
   setattr(res, "ngram", c("ngram_min" = ngram_min, "ngram_max" = ngram_max))
@@ -189,17 +193,16 @@ create_vocabulary.itoken_parallel = function(it, ngram = c("ngram_min" = 1L, "ng
 }
 
 combine_vocabulary = function(...) {
-  vocab_list = list(...) %>% lapply(setDT)
+  vocab_list = lapply(list(...), setDT)
   ngram = attr(vocab_list[[1]], "ngram", exact = TRUE)
   # extract vocabulary stats data.frame and rbind them
-  res = vocab_list %>%
-    lapply(function(x) x[, .(term_count, doc_count, term)]) %>%
-    rbindlist
+  res = lapply(vocab_list, function(x) x[, .(term_count, doc_count, term)])
+  res = rbindlist(res)
 
   # reduce by terms
   res = res[, .("term_count" = sum(term_count),
-                                       "doc_count" = sum(doc_count)),
-                                   by = term]
+                "doc_count" = sum(doc_count)),
+            by = term]
   setcolorder(res, c("term", "term_count", "doc_count"))
 
   combined_document_count = 0
@@ -295,8 +298,8 @@ prune_vocabulary = function(vocabulary,
 
 detect_ngrams = function(vocab, ...) {
   stopifnot(inherits(vocab, "text2vec_vocabulary"))
-  strsplit(vocab$term, attr(vocab, "sep_ngram", TRUE), fixed = TRUE, ...) %>%
-    vapply(length, 0L)
+  res = strsplit(vocab$term, attr(vocab, "sep_ngram", TRUE), fixed = TRUE, ...)
+  vapply(res, length, 0L)
 }
 
 

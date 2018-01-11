@@ -5,8 +5,8 @@ create_xptr_unordered_set <- function(x) {
     .Call(`_text2vec_create_xptr_unordered_set`, x)
 }
 
-collapse_collocations_cpp <- function(docs, xptr_unordered_set, r_sep) {
-    .Call(`_text2vec_collapse_collocations_cpp`, docs, xptr_unordered_set, r_sep)
+collapse_collocations_cpp <- function(docs, xptr_unordered_set_phrases, xptr_unordered_set_stopwords, r_sep) {
+    .Call(`_text2vec_collapse_collocations_cpp`, docs, xptr_unordered_set_phrases, xptr_unordered_set_stopwords, r_sep)
 }
 
 cpp_glove_create <- function(params) {

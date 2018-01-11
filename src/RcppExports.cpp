@@ -17,15 +17,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // collapse_collocations_cpp
-ListOf<CharacterVector> collapse_collocations_cpp(const ListOf<const CharacterVector>& docs, SEXP xptr_unordered_set, const String r_sep);
-RcppExport SEXP _text2vec_collapse_collocations_cpp(SEXP docsSEXP, SEXP xptr_unordered_setSEXP, SEXP r_sepSEXP) {
+ListOf<CharacterVector> collapse_collocations_cpp(const ListOf<const CharacterVector>& docs, SEXP xptr_unordered_set_phrases, SEXP xptr_unordered_set_stopwords, const String r_sep);
+RcppExport SEXP _text2vec_collapse_collocations_cpp(SEXP docsSEXP, SEXP xptr_unordered_set_phrasesSEXP, SEXP xptr_unordered_set_stopwordsSEXP, SEXP r_sepSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const ListOf<const CharacterVector>& >::type docs(docsSEXP);
-    Rcpp::traits::input_parameter< SEXP >::type xptr_unordered_set(xptr_unordered_setSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type xptr_unordered_set_phrases(xptr_unordered_set_phrasesSEXP);
+    Rcpp::traits::input_parameter< SEXP >::type xptr_unordered_set_stopwords(xptr_unordered_set_stopwordsSEXP);
     Rcpp::traits::input_parameter< const String >::type r_sep(r_sepSEXP);
-    rcpp_result_gen = Rcpp::wrap(collapse_collocations_cpp(docs, xptr_unordered_set, r_sep));
+    rcpp_result_gen = Rcpp::wrap(collapse_collocations_cpp(docs, xptr_unordered_set_phrases, xptr_unordered_set_stopwords, r_sep));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -499,7 +500,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_text2vec_create_xptr_unordered_set", (DL_FUNC) &_text2vec_create_xptr_unordered_set, 1},
-    {"_text2vec_collapse_collocations_cpp", (DL_FUNC) &_text2vec_collapse_collocations_cpp, 3},
+    {"_text2vec_collapse_collocations_cpp", (DL_FUNC) &_text2vec_collapse_collocations_cpp, 4},
     {"_text2vec_cpp_glove_create", (DL_FUNC) &_text2vec_cpp_glove_create, 1},
     {"_text2vec_cpp_glove_get_word_vectors", (DL_FUNC) &_text2vec_cpp_glove_get_word_vectors, 1},
     {"_text2vec_cpp_glove_set_cost_zero", (DL_FUNC) &_text2vec_cpp_glove_set_cost_zero, 1},

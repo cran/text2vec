@@ -4,36 +4,47 @@
 #' @section Usage:
 #' For usage details see \bold{Methods, Arguments and Examples} sections.
 #' \preformatted{
-#' colloc = Collocations$new(vocabulary = NULL, collocation_count_min = 50, pmi_min = 5, gensim_min = 0, lfmd_min = -Inf, sep = "_")
-#' colloc$partial_fit(it, ...)
-#' colloc$fit(it, n_iter = 1, ...)
-#' colloc$transform(it)
-#' colloc$prune(pmi_min = 5, gensim_min = 0, lfmd_min = -Inf)
-#' colloc$collocation_stat
+#' model = Collocations$new(vocabulary = NULL, collocation_count_min = 50, pmi_min = 5, gensim_min = 0,
+#'                          lfmd_min = -Inf, llr_min = 0, sep = "_")
+#' model$partial_fit(it, ...)
+#' model$fit(it, n_iter = 1, ...)
+#' model$transform(it)
+#' model$prune(pmi_min = 5, gensim_min = 0, lfmd_min = -Inf, llr_min = 0)
+#' model$collocation_stat
 #' }
 #' @format \code{\link{R6Class}} object.
 #' @section Methods:
 #' \describe{
-#'   \item{\code{$new(vocabulary = NULL, collocation_count_min = 50, sep = "_")}}{Constructor for Collocations model.For description of arguments see \bold{Arguments} section.}
+#'   \item{\code{$new(vocabulary = NULL, collocation_count_min = 50, sep = "_")}}{Constructor for Collocations model.
+#'   For description of arguments see \bold{Arguments} section.}
 #'   \item{\code{$fit(it, n_iter = 1, ...)}}{fit Collocations model to input iterator \code{it}.
 #'   Iterating over input iterator \code{it} \code{n_iter} times, so hierarchically can learn multi-word phrases.
 #'   Invisibly returns \code{collocation_stat}.}
 #'   \item{\code{$partial_fit(it, ...)}}{iterates once over data and learns collocations. Invisibly returns \code{collocation_stat}.
-#'   Workhorse for \code{$fit()}}.
+#'   Workhorse for \code{$fit()}}
 #'   \item{\code{$transform(it)}}{transforms input iterator using learned collocations model.
 #'   Result of the transformation is new \code{itoken} or \code{itoken_parallel} iterator which will
 #'   produce tokens with phrases collapsed into single token.}
-#'   \item{\code{$prune(pmi_min = 5, gensim_min = 0, lfmd_min = -Inf)}}{
+#'   \item{\code{$prune(pmi_min = 5, gensim_min = 0, lfmd_min = -Inf, llr_min = 0)}}{
 #'   filter out non-relevant phrases with low score. User can do it directly by modifying \code{collocation_stat} object.}
 #'}
 #' @field collocation_stat \code{data.table} with collocations(phrases) statistics.
 #' Useful for filtering non-relevant phrases
 #' @section Arguments:
 #' \describe{
-#'  \item{colloc}{A \code{Collocation} model object}
+#'  \item{model}{A \code{Collocation} model object}
 #'  \item{n_iter}{number of iteration over data}
-#'  \item{pmi_min, gensim_min, lfmd_min}{minimal scores of the corresponding statistics in order to collapse tokens into collocation
-#'  see data in \code{colloc$collocation_stat} for better understanding}
+#'  \item{pmi_min, gensim_min, lfmd_min, llr_min}{minimal scores of the corresponding
+#'  statistics in order to collapse tokens into collocation:
+#'  \itemize{
+#'   \item pointwise mutual information
+#'   \item "gensim" scores - \url{https://radimrehurek.com/gensim/models/phrases.html} adapted from word2vec paper
+#'   \item log-frequency biased mutual dependency
+#'   \item Dunning's  logarithm of the ratio between the likelihoods of the hypotheses of dependence and independence
+#'  }
+#'  See \url{http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.11.8101&rep=rep1&type=pdf},
+#'  \url{http://www.aclweb.org/anthology/I05-1050} for details.
+#'  Also see data in \code{model$collocation_stat} for better intuition}
 #'  \item{it}{An input \code{itoken} or \code{itoken_parallel} iterator}
 #'  \item{vocabulary}{\code{text2vec_vocabulary} - if provided will look for collocations consisted of only from vocabulary}
 #' }
@@ -42,19 +53,19 @@
 #' data("movie_review")
 #'
 #' preprocessor = function(x) {
-#'   tolower(x) %>% gsub("[^[:alnum:]\\s]", replacement = " ", .)
+#'   gsub("[^[:alnum:]\\s]", replacement = " ", tolower(x))
 #' }
 #' sample_ind = 1:100
-#' tokens = movie_review$review[sample_ind] %>% preprocessor %>% word_tokenizer
+#' tokens = word_tokenizer(preprocessor(movie_review$review[sample_ind]))
 #' it = itoken(tokens, ids = movie_review$id[sample_ind])
 #' system.time(v <- create_vocabulary(it))
 #' v = prune_vocabulary(v, term_count_min = 5)
 #'
-#' cc = Collocations$new(collocation_count_min = 5, pmi_min = 5)
-#' cc$fit(it, n_iter = 2)
-#' cc$collocation_stat
+#' model = Collocations$new(collocation_count_min = 5, pmi_min = 5)
+#' model$fit(it, n_iter = 2)
+#' model$collocation_stat
 #'
-#' it2 = cc$transform(it)
+#' it2 = model$transform(it)
 #' v2 = create_vocabulary(it2)
 #' v2 = prune_vocabulary(v2, term_count_min = 5)
 #' # check what phrases model has learned
@@ -82,11 +93,12 @@ Collocations = R6::R6Class(
     sep = NULL,
     phrases = NULL,
     phrases_ptr = NULL,
-    v = NULL,
+    vocabulary = NULL,
     collocation_count_min = NULL,
     pmi_min = NULL,
     gensim_min = NULL,
-    lfmd_min = NULL
+    lfmd_min = NULL,
+    llr_min = NULL
   ),
   public = list(
     collocation_stat = NULL,
@@ -95,11 +107,12 @@ Collocations = R6::R6Class(
                           pmi_min = 5,
                           gensim_min = 0,
                           lfmd_min = -Inf,
+                          llr_min = 0,
                           sep = "_") {
       if(is.null(vocabulary)) {
         flog.debug("got NULL as vocabulary - so it will be built from training data iterator later")
       } else if(inherits(vocabulary, "text2vec_vocabulary")) {
-        private$v = copy(vocabulary)
+        private$vocabulary = copy(vocabulary)
       } else {
         stop("'vocabulary' shold be object of class 'text2vec_vocabulary' or NULL")
       }
@@ -109,24 +122,35 @@ Collocations = R6::R6Class(
       private$pmi_min = pmi_min
       private$gensim_min = gensim_min
       private$lfmd_min = lfmd_min
+      private$llr_min = llr_min
     },
-    fit = function(it, n_iter = 1, ...) {
+    fit = function(it, n_iter = 1L, ...) {
+      n_colloc_last = -1L
       for(i in seq_len(n_iter)) {
         self$partial_fit(it, ...)
-        flog.info("iteration %d - found %d collocations", i, nrow(self$collocation_stat))
+        if(nrow(self$collocation_stat) > n_colloc_last) {
+          flog.info("iteration %d - found %d collocations", i, nrow(self$collocation_stat))
+          n_colloc_last = nrow(self$collocation_stat)
+        } else {
+          flog.info("iteration %d - converged", i)
+          break()
+        }
       }
       invisible(self$collocation_stat)
     },
     partial_fit = function(it, ...) {
       stopifnot(inherits(it, "itoken") || inherits(it, "itoken_parallel"))
-      if(is.null(private$v)) {
+      if(is.null(private$vocabulary)) {
         flog.debug("building vocabulary for Collocations model")
-        private$v = create_vocabulary(it)
-        private$v = prune_vocabulary(private$v, term_count_min = private$collocation_count_min)
-        flog.debug("vocabulary construction done - %d terms", nrow(private$v))
+        private$vocabulary = create_vocabulary(it, ...)
+        private$vocabulary = prune_vocabulary(private$vocabulary, term_count_min = private$collocation_count_min)
+        flog.debug("vocabulary construction done - %d terms", nrow(private$vocabulary))
       }
       if(!is.null(self$collocation_stat)) {
-        private$v = create_vocabulary(unique(c(private$phrases, private$v$term)), sep_ngram = private$sep )
+        private$vocabulary = create_vocabulary(it = unique(c(private$phrases, private$vocabulary$term)),
+                                               ngram = attr(private$vocabulary, "ngram", TRUE),
+                                               stopwords =  attr(private$vocabulary, "stopwords", TRUE),
+                                               sep_ngram = private$sep)
         it_internal = self$transform(it)
       }
       else {
@@ -137,7 +161,7 @@ Collocations = R6::R6Class(
         } else
           it_internal = it$clone(deep = TRUE)
       }
-      vectorizer = vocab_vectorizer(private$v)
+      vectorizer = vocab_vectorizer(private$vocabulary)
       tcm = create_tcm(it_internal, vectorizer, skip_grams_window = 1L,
                        skip_grams_window_context = "right")
       # flog.debug("tcm done dim = %d * %d", nrow(tcm), ncol(tcm))
@@ -165,24 +189,36 @@ Collocations = R6::R6Class(
       # A phrase of words a and b is accepted if (cnt(a, b) - min_count) * N / (cnt(a) * cnt(b)) > threshold
       # where N is the total vocabulary size.
       dt[ , gensim := (n_ij - private$collocation_count_min) * nword / (as.numeric(n_i) * n_j)]
+      # Dunning's LLR
+      dt[ , llr := -2 * (  L_func(n_j / nword, n_i, n_ij) +
+                               L_func(n_j / nword, nword - n_i, n_j - n_ij) -
+                               L_func(n_ij / n_i, n_i, n_ij) -
+                               L_func((n_j - n_ij) / (nword - n_i), nword - n_i, n_j - n_ij)
+                             )]
+      # remove duplicates
+      # Not sure where they coming from... - should not happen
+      # FIXME
+      dups = dt$prefix %in% self$collocation_stat$prefix &
+             dt$suffix %in% self$collocation_stat$suffix
+      dt = dt[!dups, ]
+
       self$collocation_stat = rbindlist(list(self$collocation_stat, dt), use.names = TRUE, fill = TRUE)
+      # self$collocation_stat = self$collocation_stat[, .SD[1, ], by = .(prefix, suffix)]
       self$prune()
 
-      private$phrases = paste(self$collocation_stat$prefix, self$collocation_stat$suffix, sep = private$sep)
+      # private$phrases = paste(self$collocation_stat$prefix, self$collocation_stat$suffix, sep = private$sep)
       private$phrases_ptr = create_xptr_unordered_set(private$phrases)
 
-      self$collocation_stat[, rank_pmi := frank(-pmi, ties.method = "first")]
-      self$collocation_stat[, rank_lfmd := frank(-lfmd, ties.method = "first")]
-      self$collocation_stat[, rank_gensim := frank(-gensim, ties.method = "first")]
-      self$collocation_stat = self$collocation_stat[order(rank_pmi + rank_lfmd + rank_gensim)]
-      setkey(self$collocation_stat, rank_pmi)
+      self$collocation_stat = self$collocation_stat[order(self$collocation_stat$pmi, decreasing = TRUE)]
 
       invisible(self$collocation_stat)
     },
-    prune = function(pmi_min = private$pmi_min, gensim_min = private$gensim_min, lfmd_min = private$lfmd_min) {
+    prune = function(pmi_min = private$pmi_min, gensim_min = private$gensim_min, lfmd_min = private$lfmd_min,
+                     llr_min = private$llr_min) {
       ii = self$collocation_stat$pmi >= pmi_min &
         self$collocation_stat$gensim >= gensim_min &
-        self$collocation_stat$lfmd >= lfmd_min
+        self$collocation_stat$lfmd >= lfmd_min &
+        self$collocation_stat$llr >= llr_min
       self$collocation_stat = self$collocation_stat[ii, ]
 
       private$phrases = paste(self$collocation_stat$prefix, self$collocation_stat$suffix, sep = private$sep)
@@ -192,10 +228,15 @@ Collocations = R6::R6Class(
     },
     transform = function(it) {
       # if pointer is invalid - init it
-      if(is_invalid_ptr(private$phrases_ptr))
+      if(is.null(private$phrases_ptr) || is_invalid_ptr(private$phrases_ptr))
         private$phrases_ptr = create_xptr_unordered_set(private$phrases)
+      stopwords = attr(private$vocabulary, "stopwords", TRUE)
+      stopifnot(is.character(stopwords))
+      stopwords_ptr = create_xptr_unordered_set(stopwords)
+      collapse_collocations = function(x) {
+        collapse_collocations_cpp(x$tokens, private$phrases_ptr, stopwords_ptr, private$sep)
+      }
 
-      collapse_collocations = function(x) collapse_collocations_cpp(x$tokens, private$phrases_ptr, private$sep)
       if(inherits(it, "itoken_parallel")) {
         flog.debug("clonning itoken_parallel")
         it_transformed = lapply(it, function(x) {
