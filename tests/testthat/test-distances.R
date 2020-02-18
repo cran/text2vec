@@ -10,9 +10,6 @@ tokens = word_tokenizer(tokens)
 it = itoken(tokens, progressbar = FALSE)
 v = create_vocabulary(it)
 v = prune_vocabulary(v, term_count_min = 3)
-# vv = vocab_vectorizer(v)
-#
-# temp = vv(iterator = it, grow_dtm = T, skip_grams_window_context = "symmetric", window_size = 0)
 
 dtm = create_dtm(it, vectorizer = vocab_vectorizer(v))
 tcm = create_tcm(it, vectorizer = vocab_vectorizer(v), skip_grams_window = 5)
@@ -70,14 +67,11 @@ test_that("euclidean", {
 })
 
 test_that("relaxed word mover distance", {
-  glove = GlobalVectors$new(word_vectors_size = 50, vocabulary = v, x_max = 10)
-  wv = glove$fit_transform(tcm, n_iter = 10)
-  rwmd_model = RWMD$new(wv)
-  rwmd_dist = dist2(dtm[i1, ], dtm[i2, ], method = rwmd_model, norm = "none")
+  glove = GlobalVectors$new(rank = 50, x_max = 10)
+  wv = glove$fit_transform(tcm, n_iter = 5)
+  rwmd_model = RWMD$new(dtm[i2, ], wv)
+  rwmd_dist = rwmd_model$dist2(dtm[i1, ])
   expect_equal(nrow(rwmd_dist), length(i1))
   expect_equal(ncol(rwmd_dist), length(i2))
   expect_equal(rwmd_dist[1,1], 0, tol = tol)
-  expect_equal(dist2(dtm[i1, ], method = rwmd_model, norm = "none"),
-               dist2(dtm[i1, ], dtm[i1, ], method = rwmd_model, norm = "none"))
-
 })

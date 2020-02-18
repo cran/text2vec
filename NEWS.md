@@ -1,3 +1,22 @@
+# text2vec 0.6
+1. 2019-12-17
+    *  **breaking change** - removed construction of a vocabulary in parallel on windows
+    * use `rsparse` package for SVD and GloVe factorizations
+    * uodated RWMD implementation (hopefully bug free)
+1. 2018-09-10
+    *  **breaking change** - changed IDF formula - see #280 for details.
+1. 2018-05-28
+    * Added `postag_lemma_tokenizer()` (wrapper around `udpipe::udpipe_annotate`). Can be used as a drop-in replacement for more simple tokenizers in text2vec. 
+1. 2018-05-25
+    * Made `combine_vocabularies()` part of public API - see #260 for details.
+1. 2018-05-10
+    * Added `coherence()` function for comprehensive coherence metrics. Thanks to Manuel Bickel ( @manuelbickel ) for conrtibution.
+1. 2018-05-02
+    * Fixed bug LSA model - document embeddings calculated as left singular vectors multiplied by singular values (not square root of values as before). Thanks to Sloane Simmons ( @singularperturbation )
+    * Now `fit_transform` and `transform` methods in LDA model produce same results. Thanks to @jiunsiew for reporting. Also now LDA has `n_iter_inference` parameter. It controls number of the samples from converged distribution for document-topic inference. This leads to more robust document-topic probabilities (reduced variance). Default value is 10.
+1. 2018-01-17
+    * more numerically robust PMI, LFMD - thanks to @andland. Also adds iteration number `iter` to `collocation_stat`. `iter` shows iteration number when collocation stats (and counters) were calculated.
+
 # text2vec 0.5.1 [2018-01-10]
 
 1. 2018-01-10

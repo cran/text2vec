@@ -27,7 +27,7 @@ knitr::opts_chunk$set(echo=TRUE, eval=FALSE, warning=FALSE, message=FALSE)
 #  tcm <- create_tcm(it, vectorizer, skip_grams_window = 5L)
 
 ## ---- message=TRUE-------------------------------------------------------
-#  glove = GlobalVectors$new(word_vectors_size = 50, vocabulary = vocab, x_max = 10)
+#  glove = GlobalVectors$new(rank = 50, x_max = 10)
 #  glove$fit(tcm, n_iter = 20)
 #  # 2016-10-03 10:09:14 - epoch 1, expected cost 0.0893
 #  # 2016-10-03 10:09:17 - epoch 2, expected cost 0.0608
@@ -51,7 +51,7 @@ knitr::opts_chunk$set(echo=TRUE, eval=FALSE, warning=FALSE, message=FALSE)
 #  # 2016-10-03 10:10:08 - epoch 20, expected cost 0.0378
 
 ## ---- message=TRUE, eval=FALSE-------------------------------------------
-#  glove = GlobalVectors$new(word_vectors_size = 50, vocabulary = vocab, x_max = 10)
+#  glove = GlobalVectors$new(rank = 50, x_max = 10)
 #  # `glove` object will be modified by `fit()` call !
 #  fit(tcm, glove, n_iter = 20)
 

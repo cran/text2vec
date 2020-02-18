@@ -1,7 +1,6 @@
 Package: text2vec
 Type: Package
-Version: 0.5.1
-Date: 2018-01-10
+Version: 0.6
 Title: Modern Text Mining Framework for R
 License: GPL (>= 2) | file LICENSE
 Description: Fast and memory-friendly tools for text vectorization, topic
@@ -9,30 +8,32 @@ Description: Fast and memory-friendly tools for text vectorization, topic
     provides a source-agnostic streaming API, which allows researchers to perform
     analysis of collections of documents which are larger than available RAM. All
     core functions are parallelized to benefit from multicore machines.
-Authors@R: c(person("Dmitriy", "Selivanov", role = c("aut", "cre", "cph"),
-    email = "selivanov.dmitriy@gmail.com"), 
+Authors@R: c(
+    person("Dmitriy", "Selivanov", role = c("aut", "cre", "cph"),
+      email = "selivanov.dmitriy@gmail.com"), 
+    person("Manuel", "Bickel", role = c("aut", "cph"),
+      comment = "Coherence measures for topic models"),
     person("Qing", "Wang", role = c("aut", "cph"),
-    email = "selivanov.dmitriy@gmail.com", 
-    comment = "Author of the WaprLDA C++ code"))
+      comment = "Author of the WaprLDA C++ code"))
 Maintainer: Dmitriy Selivanov <selivanov.dmitriy@gmail.com>
 Encoding: UTF-8
-SystemRequirements: GNU make, C++11
-Depends: R (>= 3.2.0), methods
-Imports: Matrix (>= 1.1), Rcpp (>= 0.11), RcppParallel (>= 4.3.14),
-        digest (>= 0.6.8), foreach(>= 1.4.3), data.table(>= 1.9.6),
-        irlba (>= 2.2.1), R6 (>= 2.1.2), futile.logger (>= 1.4.3),
-        stringi (>= 1.1.5), mlapi (>= 0.1.0)
-LinkingTo: Rcpp, RcppParallel, digest, sparsepp (>= 0.2.0)
-Suggests: doParallel, testthat, covr, knitr, rmarkdown, glmnet,
-        parallel, tokenizers, magrittr
+SystemRequirements: C++11
+Depends: R (>= 3.6.0), methods
+Imports: Matrix (>= 1.1), Rcpp (>= 1.0.3), R6 (>= 2.3.0), data.table(>=
+        1.9.6), rsparse (>= 0.3.3.4), stringi (>= 1.1.5), mlapi (>=
+        0.1.0), lgr (>= 0.2), digest (>= 0.6.8)
+LinkingTo: Rcpp, digest (>= 0.6.8)
+Suggests: magrittr, udpipe (>= 0.6), glmnet, testthat, covr, knitr,
+        rmarkdown, proxy
 URL: http://text2vec.org
 BugReports: https://github.com/dselivanov/text2vec/issues
 VignetteBuilder: knitr
 LazyData: true
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.1
 NeedsCompilation: yes
-Packaged: 2018-01-11 08:21:10 UTC; dmitry
+Packaged: 2020-02-18 06:09:05 UTC; dselivanov
 Author: Dmitriy Selivanov [aut, cre, cph],
+  Manuel Bickel [aut, cph] (Coherence measures for topic models),
   Qing Wang [aut, cph] (Author of the WaprLDA C++ code)
 Repository: CRAN
-Date/Publication: 2018-01-11 21:57:23 UTC
+Date/Publication: 2020-02-18 14:20:03 UTC

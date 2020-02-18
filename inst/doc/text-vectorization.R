@@ -31,9 +31,8 @@ it_train = itoken(train$review,
 vocab = create_vocabulary(it_train)
 
 ## -----------------------------------------------------------------------------
-train_tokens = train$review %>% 
-  prep_fun %>% 
-  tok_fun
+train_tokens = tok_fun(prep_fun(train$review))
+  
 it_train = itoken(train_tokens, 
                   ids = train$id,
                   # turn off progressbar because it won't look nice in rmd
@@ -74,10 +73,9 @@ print(paste("max AUC =", round(max(glmnet_classifier$cvm), 4)))
 
 ## ---- test_1, message=FALSE, warning=FALSE, eval=TRUE-------------------------
 # Note that most text2vec functions are pipe friendly!
-it_test = test$review %>% 
-  prep_fun %>% tok_fun %>% 
-  # turn off progressbar because it won't look nice in rmd
-  itoken(ids = test$id, progressbar = FALSE)
+it_test = tok_fun(prep_fun(test$review))
+# turn off progressbar because it won't look nice in rmd
+it_test = itoken(it_test, ids = test$id, progressbar = FALSE)
          
 
 dtm_test = create_dtm(it_test, vectorizer)

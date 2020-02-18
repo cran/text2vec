@@ -71,8 +71,11 @@ get_tcm = function(corpus_ptr) {
 #' @param weights weights for context/distant words during co-occurence statistics calculation.
 #' By default we are setting \code{weight = 1 / distance_from_current_word}.
 #' Should have length equal to skip_grams_window.
+#' @param binary_cooccurence \code{FALSE} by default. If set to \code{TRUE} then function only counts first
+#' appearence of the context word and remaining occurrence are ignored. Useful when creating TCM for evaluation
+#' of coherence of topic models.
 #' \code{"symmetric"} by default - take into account \code{skip_grams_window} left and right.
-#' @param ... arguments to \link{foreach} function which is used to iterate over
+#' @param ... placeholder for additional arguments (not used at the moment).
 #'   \code{it}.
 #' @return \code{dgTMatrix} TCM matrix
 #' @seealso \link{itoken} \link{create_dtm}
@@ -91,22 +94,18 @@ get_tcm = function(corpus_ptr) {
 #' # parallel version
 #'
 #' # set to number of cores on your machine
-#' N_WORKERS = 1
-#' if(require(doParallel)) registerDoParallel(N_WORKERS)
-#' splits = split_into(movie_review$review, N_WORKERS)
-#' jobs = lapply(splits, itoken, tolower, word_tokenizer)
+#' it = token_parallel(movie_review$review[1:N], tolower, word_tokenizer, movie_review$id[1:N])
 #' v = create_vocabulary(jobs)
 #' vectorizer = vocab_vectorizer(v)
-#' jobs = lapply(splits, itoken, tolower, word_tokenizer)
-#'
+#' dtm = create_dtm(it, vectorizer, type = 'dgTMatrix')
 #' tcm = create_tcm(jobs, vectorizer, skip_grams_window = 3L, skip_grams_window_context = "symmetric")
 #' }
 #' @export
 create_tcm = function(it, vectorizer, skip_grams_window = 5L,
                       skip_grams_window_context = c("symmetric", "right", "left"),
-                      weights = 1 / seq_len(skip_grams_window), ...) {
+                      weights = 1 / seq_len(skip_grams_window), binary_cooccurence = FALSE, ...) {
   stopifnot(length(weights) == skip_grams_window)
-  stopifnot(class(weights) %in% c("numeric", "integer"))
+  stopifnot(inherits(weights, "numeric"))
   e = environment()
   reg.finalizer(e, malloc_trim_finalizer)
   # if(attr(vectorizer, "skip_grams_window", TRUE) == 0)
@@ -118,10 +117,10 @@ create_tcm = function(it, vectorizer, skip_grams_window = 5L,
 #' @export
 create_tcm.itoken = function(it, vectorizer, skip_grams_window = 5L,
                              skip_grams_window_context = c("symmetric", "right", "left"),
-                             weights = 1 / seq_len(skip_grams_window), ...) {
+                             weights = 1 / seq_len(skip_grams_window), binary_cooccurence = FALSE, ...) {
   skip_grams_window_context = match.arg(skip_grams_window_context)
   corp = vectorizer(it, grow_dtm = FALSE, skip_grams_window_context = skip_grams_window_context,
-                    window_size = skip_grams_window, weights = weights)
+                    window_size = skip_grams_window, weights = weights, binary_cooccurence)
   # get it in triplet form - fastest and most
   # memory efficient way because internally it
   # kept in triplet form
@@ -137,7 +136,7 @@ create_tcm.itoken = function(it, vectorizer, skip_grams_window = 5L,
 create_tcm.itoken_parallel = function(it, vectorizer,
                            skip_grams_window = 5L,
                            skip_grams_window_context = c("symmetric", "right", "left"),
-                           weights = 1 / seq_len(skip_grams_window), ...) {
+                           weights = 1 / seq_len(skip_grams_window), binary_cooccurence = FALSE, ...) {
   # see ?mclapply
   # Prior to R 3.4.0 and on a 32-bit platform, the serialized result from each forked process is
   # limited to 2^31 - 1 bytes. (Returning very large results via serialization is inefficient and should be avoided.)
@@ -146,58 +145,29 @@ create_tcm.itoken_parallel = function(it, vectorizer,
   MIN_R_VERSION_large_serialization = 34
   #---------------------------------------------------------------
   skip_grams_window_context = match.arg(skip_grams_window_context)
-  jobs = Map(function(job_id, it) list(job_id = job_id, it = it), seq_along(it), it)
-  res =
-    foreach(batch = jobs,
-            .combine = mc_triplet_sum,
-            .inorder = F,
-            .multicombine = T,
-            # .maxcombine = foreach::getDoParWorkers(),
-            # user already made split for jobs
-            # preschedule = FALSE is much more memory efficient
-            .options.multicore = list(preschedule = FALSE),
-            ...) %dopar%
-            {
-              tcm = create_tcm(batch$it, vectorizer = vectorizer, skip_grams_window = skip_grams_window,
-                               skip_grams_window_context = skip_grams_window_context, weights = weights, ...)
-              tcm_bytes = utils::object.size(tcm)
-              if(tcm_bytes >= 2**31 &&  R_VERSION < MIN_R_VERSION_large_serialization) {
-                err_msg = sprintf("result from worker pid=%d can't be transfered to master:
+
+  res = mc_queue(it, FUN = function(x) {
+
+    it2 = itoken(x$tokens, n_chunks = 1L, progressbar = FALSE, ids = x$ids)
+
+    tcm = create_tcm(it2, vectorizer = vectorizer, skip_grams_window = skip_grams_window,
+                     skip_grams_window_context = skip_grams_window_context, weights = weights, ...)
+    tcm_bytes = utils::object.size(tcm)
+    if(tcm_bytes >= 2**31 &&  R_VERSION < MIN_R_VERSION_large_serialization) {
+      err_msg = sprintf("result from worker pid=%d can't be transfered to master:
                                   relust %d bytes, max_bytes allowed = 2^31",
-                                  Sys.getpid(), tcm_bytes)
-                flog.error(err_msg)
-                stop(err_msg)
-              }
-              tcm
-            }
-  flog.debug("map phase finished, starting reduce")
+                        Sys.getpid(), tcm_bytes)
+      logger$.error(err_msg)
+      stop(err_msg)
+    }
+    tcm
+  })
+  res = do.call(triplet_sum, res)
+  logger$debug("map phase finished, starting reduce")
   wc = attr(res, "word_count", TRUE)
   res = as(res, "dgTMatrix")
   data.table::setattr(res, "word_count", wc)
   res
-}
-
-# multicore combine
-mc_reduce = function(X, FUN,  ...) {
-  if (length(X) >= 2) {
-    # split into pairs of elements
-    pairs = split(X, ceiling(seq_along(X) / 2))
-
-    X_NEW =
-      foreach( pair = pairs, ...) %dopar% {
-        # if length(X) is odd, we will recieve several pairs + single element
-        if (length(pair) == 1)
-          pair[[1]]
-        else {
-          FUN(pair[[1]], pair[[2]])
-        }
-      }
-    # recursive call
-    mc_reduce(X_NEW, FUN = FUN, ...)
-  }
-  # finally reduce to single element
-  else
-    X[[1]]
 }
 
 sum_m = function(m1, m2) {
@@ -217,17 +187,12 @@ sum_m = function(m1, m2) {
   res
 }
 
-# multicore version of triplet_sum
-mc_triplet_sum = function(...) {
+triplet_sum = function(...) {
   lst = list(...)
   if(any(vapply(lst, is.null, TRUE))) {
     err_msg = "got NULL from one of the workers - something went wrong (uncaught error)"
-    flog.error(err_msg)
+    logger$error(err_msg)
     stop(err_msg)
   }
-  mc_reduce(lst,
-            FUN = sum_m,
-            .inorder = FALSE,
-            .multicombine = TRUE)
+  Reduce(sum_m, lst)
 }
-

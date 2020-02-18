@@ -17,13 +17,14 @@
 #include <Rcpp.h>
 #include <string>
 #include <vector>
+#include <memory>
 
 #define SPP_MIX_HASH
-#include <sparsepp/spp.h>
+//#include <sparsepp/spp.h>
 
 #include "text2vec.h"
 
-using spp::sparse_hash_map;
+//using spp::sparse_hash_map;
 using namespace std;
 using namespace Rcpp;
 
@@ -37,6 +38,15 @@ namespace std {
       return (uint64_t) k.first << 32 | k.second;
     }
   };
+
+  // template <std::pair<uint32_t, uint32_t>>
+  // struct equal_to
+  // {
+  //   inline  operator() (const std::pair<uint32_t, uint32_t>& x, const std::pair<uint32_t, uint32_t>& y) const
+  //   {
+  //     return x.first==y.first && x.second==y.second;
+  //   }
+  // };
 }
 
 template<typename T>
@@ -44,10 +54,10 @@ class SparseTripletMatrix {
 public:
   // constructor for sparse matrix
   SparseTripletMatrix():
-    nrow(0), ncol(0) {};
+    nrow(0), ncol(0), nnz(0) {};
 
   SparseTripletMatrix(uint32_t nrow, uint32_t ncol):
-    nrow(nrow), ncol(ncol) {};
+    nrow(nrow), ncol(ncol), nnz(0) {};
 
   inline void increment_nrows() {this->nrow++;};
   inline void increment_ncols() {this->ncol++;};
@@ -72,7 +82,11 @@ private:
   // number of non-zero elements in matrix
   size_t nnz;
   // container for sparse matrix in triplet form
-  sparse_hash_map< pair<uint32_t, uint32_t>, T >  sparse_container;
+  std::unordered_map< pair<uint32_t, uint32_t>, T> sparse_container;
+
+  // FIXME - https://github.com/dselivanov/r-sparsepp/issues/5
+  // std::sparse_hash_map< pair<uint32_t, uint32_t>, T> sparse_container;
+
 };
 
 template<typename T>

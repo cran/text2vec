@@ -28,9 +28,13 @@
 #'  such that ngram_min <= n <= ngram_max will be used.
 #'@param stopwords \code{character} vector of stopwords to filter out. \bold{NOTE} that
 #' stopwords will be used "as is". This means that if preprocessing function in \link{itoken} does some
-#' text modification (like stemming), then this preprocessing need to be applied to stopwrods before passing them here.
+#' text modification (like stemming), then this preprocessing need to be applied to stopwords before passing them here.
 #' See \url{https://github.com/dselivanov/text2vec/issues/228} for example.
 #'@param sep_ngram \code{character} a character string to concatenate words in ngrams
+#'@param window_size \code{integer} (0 by default). If \code{window_size > 0} than vocabulary will
+#'be created from pseudo-documents which are obtained by virtually splitting each documents into
+#'chunks of the length \code{window_size} by going with sliding window through them.
+#'This is useful for creating special statistics which are used for coherence estimation in topic models.
 #'@return \code{text2vec_vocabulary} object, which is actually a \code{data.frame}
 #'  with following columns:
 #'  \item{\code{term}       }{ \code{character} vector of unique terms}
@@ -54,10 +58,11 @@
 #' doc_proportion_min = 0.001, vocab_term_max = 20000)
 #'@export
 create_vocabulary = function(it, ngram = c("ngram_min" = 1L, "ngram_max" = 1L),
-                       stopwords = character(0), sep_ngram = "_") {
+                       stopwords = character(0), sep_ngram = "_", window_size = 0L) {
   stopifnot(is.numeric(ngram) && length(ngram) == 2 && ngram[[2]] >= ngram[[1]])
   stopifnot(is.character(stopwords))
   stopifnot(is.character(sep_ngram) && nchar(sep_ngram) == 1L)
+  stopifnot(is.numeric(window_size) && length(window_size) == 1L)
   e = environment()
   reg.finalizer(e, malloc_trim_finalizer)
   UseMethod("create_vocabulary")
@@ -66,16 +71,16 @@ create_vocabulary = function(it, ngram = c("ngram_min" = 1L, "ngram_max" = 1L),
 #' @rdname create_vocabulary
 #' @export
 vocabulary = function(it, ngram = c("ngram_min" = 1L, "ngram_max" = 1L),
-                       stopwords = character(0), sep_ngram = "_") {
+                       stopwords = character(0), sep_ngram = "_", window_size = 0L) {
   .Deprecated("create_vocabulary")
-  create_vocabulary(it, ngram, stopwords)
+  create_vocabulary(it, ngram, stopwords, sep_ngram, window_size)
 }
 #' @describeIn create_vocabulary creates \code{text2vec_vocabulary} from predefined
 #' character vector. Terms will be inserted \bold{as is}, without any checks
 #' (ngrams number, ngram delimiters, etc.).
 #' @export
 create_vocabulary.character = function(it, ngram = c("ngram_min" = 1L, "ngram_max" = 1L),
-                                 stopwords = character(0), sep_ngram = "_") {
+                                 stopwords = character(0), sep_ngram = "_", window_size = 0L) {
 
   ngram_min = as.integer( ngram[[1]] )
   ngram_max = as.integer( ngram[[2]] )
@@ -84,11 +89,11 @@ create_vocabulary.character = function(it, ngram = c("ngram_min" = 1L, "ngram_ma
   it = setdiff(it, c(stopwords, ""))
   vocab_length = length(it)
 
-  res = data.frame("term" = it,
+  res = data.table("term" = it,
                    "term_count" = rep(NA_integer_, vocab_length),
-                   "doc_count" = rep(NA_integer_, vocab_length),
-                   stringsAsFactors = FALSE)
-  res = res[order(res$term_count), ]
+                   "doc_count" = rep(NA_integer_, vocab_length))
+  setkeyv(res, c("term_count", "term"))
+  setDF(res)
 
   setattr(res, "ngram", c("ngram_min" = ngram_min, "ngram_max" = ngram_max))
   setattr(res, "document_count", NA_integer_)
@@ -112,7 +117,7 @@ vocabulary_insert_document_batch_generic = function(ptr, x) {
 #' @describeIn create_vocabulary collects unique terms and corresponding statistics from object.
 #' @export
 create_vocabulary.itoken = function(it, ngram = c("ngram_min" = 1L, "ngram_max" = 1L),
-                              stopwords = character(0), sep_ngram = "_") {
+                              stopwords = character(0), sep_ngram = "_", window_size = 0L) {
   if (inherits(it, "R6"))
     it = it$clone(deep = TRUE)
   else {
@@ -122,18 +127,18 @@ create_vocabulary.itoken = function(it, ngram = c("ngram_min" = 1L, "ngram_max" 
 
   ngram_min = as.integer( ngram[[1]] )
   ngram_max = as.integer( ngram[[2]] )
-  # vocab_module = new(VocabularyBuilder, ngram_min, ngram_max, stopwords, sep_ngram)
-  vocab_ptr = cpp_vocab_create(ngram_min, ngram_max, stopwords, sep_ngram)
-
-  foreach(tokens = it) %do% {
+  vocab_ptr = cpp_vocab_create(ngram_min, ngram_max, stopwords, sep_ngram, window_size)
+  while(!it$is_complete) {
+    tokens = it$nextElem()
     vocabulary_insert_document_batch_generic(vocab_ptr, tokens$tokens)
   }
 
   res = cpp_get_vocab_statistics(vocab_ptr)
+  setDT(res)
   # don't allow empty stings
-  res = res[res$term != "", ]
-  res = res[order(res$term_count), ]
-
+  res = res[term != "", ]
+  setkeyv(res, c("term_count", "term"))
+  setDF(res)
   setattr(res, "ngram", c("ngram_min" = ngram_min, "ngram_max" = ngram_max))
   setattr(res, "document_count", cpp_get_document_count(vocab_ptr))
   setattr(res, "stopwords", stopwords)
@@ -143,56 +148,45 @@ create_vocabulary.itoken = function(it, ngram = c("ngram_min" = 1L, "ngram_max" 
   res
 }
 
-# FIXME
-#------------------------------------------------------------------------------
-# TO REMOVE IN text2vec 0.6
-#------------------------------------------------------------------------------
-#' @describeIn create_vocabulary collects unique terms and corresponding
-#'   statistics from list of itoken iterators. If parallel backend is
-#'   registered, it will build vocabulary in parallel using \link{foreach}.
-#' @export
-create_vocabulary.list = function(it, ngram = c("ngram_min" = 1L, "ngram_max" = 1L),
-                            stopwords = character(0), sep_ngram = "_", ...) {
-  .Deprecated("create_vocabulary.itoken_parallel()")
-  stopifnot( all( vapply(X = it, FUN = inherits, FUN.VALUE = FALSE, "itoken") ) )
-  res =
-    foreach(it = it,
-          .combine = combine_vocabulary,
-          .inorder = FALSE,
-          .multicombine = TRUE,
-          ...) %dopar%
-          {
-            create_vocabulary(it, ngram, stopwords)
-          }
-  setattr(res, "stopwords", stopwords)
-  setattr(res, "sep_ngram", sep_ngram)
-  res
-}
 #------------------------------------------------------------------------------
 
 #' @describeIn create_vocabulary collects unique terms and corresponding
-#'   statistics from iterator. If parallel backend is
-#'   registered, it will build vocabulary in parallel using \link{foreach}.
-#' @param ... additional arguments to \link{foreach} function.
+#'   statistics from iterator.
+#' @param ... placeholder for additional arguments (not used at the moment).
 #' @export
 create_vocabulary.itoken_parallel = function(it, ngram = c("ngram_min" = 1L, "ngram_max" = 1L),
-                                  stopwords = character(0), sep_ngram = "_", ...) {
-  stopifnot( all( vapply(X = it, FUN = inherits, FUN.VALUE = FALSE, "itoken") ) )
-  res =
-    foreach(it = it,
-            .combine = combine_vocabulary,
-            .inorder = FALSE,
-            .multicombine = TRUE,
-            ...) %dopar%
-            {
-              create_vocabulary(it, ngram, stopwords)
-            }
-  setattr(res, "stopwords", stopwords)
-  setattr(res, "sep_ngram", sep_ngram)
+                                  stopwords = character(0), sep_ngram = "_", window_size = 0L, ...) {
+
+  FUN = function(x) {
+    it2 = itoken(x$tokens, n_chunks = 1L, progressbar = FALSE, ids = x$ids)
+    create_vocabulary(it2, ngram, stopwords, sep_ngram, window_size, ...)
+  }
+
+  res = mc_queue(it, FUN)
+  res = do.call(combine_vocabularies, res)
   res
 }
 
-combine_vocabulary = function(...) {
+#'@name combine_vocabularies
+#'@title Combines multiple vocabularies into one
+#'@description Combines multiple vocabularies into one
+#'@param ... vocabulary objects created with \link{create_vocabulary}.
+#'@param combine_stopwords function to combine stopwords from input vocabularies.
+#'  By default we take a union of all stopwords.
+#'@param combine_ngram function to combine lower and upper boundary for n-grams
+#'  from input vocabularies. Usually these values should be the same, so we take this parameter
+#'  from first vocabulary.
+#'@param combine_sep_ngram function to combine stopwords from input vocabularies.
+#'  Usually these values should be the same, so we take this parameter
+#'  from first vocabulary.
+#'@return \code{text2vec_vocabulary} see details in \link{create_vocabulary}.
+#'@export
+combine_vocabularies = function(...,
+                                combine_stopwords = function(x) unique(unlist(lapply(x, attr, which = "stopwords"), use.names = FALSE)),
+                                combine_ngram = function(x) attr(x[[1]], "ngram"),
+                                combine_sep_ngram = function(x) attr(x[[1]], "sep_ngram")) {
+
+  stopifnot(is.function(combine_stopwords) && is.function(combine_ngram) && is.function(combine_sep_ngram))
   vocab_list = lapply(list(...), setDT)
   ngram = attr(vocab_list[[1]], "ngram", exact = TRUE)
   # extract vocabulary stats data.frame and rbind them
@@ -202,20 +196,27 @@ combine_vocabulary = function(...) {
   # reduce by terms
   res = res[, .("term_count" = sum(term_count),
                 "doc_count" = sum(doc_count)),
-            by = term]
+            keyby = term]
   setcolorder(res, c("term", "term_count", "doc_count"))
 
   combined_document_count = 0
   for(v in vocab_list)
     combined_document_count = combined_document_count + attr(v, "document_count", TRUE)
 
+  setkeyv(res, c("term_count", "term"))
   setDF(res)
-  setattr(res, "ngram", ngram)
+  setattr(res, "ngram", combine_ngram(vocab_list))
   setattr(res, "document_count", combined_document_count)
-  setattr(res, "stopwords", character(0))
-  setattr(res, "sep_ngram", character(0))
+  setattr(res, "stopwords", combine_stopwords(vocab_list))
+  setattr(res, "sep_ngram", combine_sep_ngram(vocab_list))
   setattr(res, "class", c("text2vec_vocabulary", class(res)))
   res
+}
+
+combine_vocabulary = function(...) {
+  # even if it was not part of public API we raise a warning
+  .Deprecated("combine_vocabularies")
+  combine_vocabularies(...)
 }
 
 #' @name prune_vocabulary

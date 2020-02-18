@@ -57,27 +57,16 @@ dtm = create_dtm(it_tokens, vectorizer = hash_vectorizer())
 str(dtm, list.len = 5)
 
 ## ---- eval=FALSE---------------------------------------------------------
-#  N_WORKERS = 2
-#  library(doParallel)
-#  # register parallel backend
-#  registerDoParallel(N_WORKERS)
-#  
 #  # note that we can control level of granularity with `n_chunks` argument
 #  it_token_par = itoken_parallel(movie_review$review, preprocessor = tolower,
 #                                 tokenizer = word_tokenizer, ids = movie_review$id,
 #                                 n_chunks = 8)
-#  
 #  vocab = create_vocabulary(it_token_par)
 #  v_vectorizer = vocab_vectorizer(vocab)
 #  dtm = create_dtm(it_token_par, vectorizer = v_vectorizer)
 #  
 
 ## ---- warning=FALSE, message=FALSE, eval=FALSE---------------------------
-#  N_WORKERS = 2
-#  library(doParallel)
-#  # register parallel backend
-#  registerDoParallel(N_WORKERS)
-#  
 #  it_files_par = ifiles_parallel(file_paths = files)
 #  it_token_par = itoken_parallel(it_files_par, preprocessor = tolower, tokenizer = word_tokenizer)
 #  
