@@ -1,4 +1,4 @@
-## ----global_options, include=FALSE---------------------------------------
+## ----global_options, include=FALSE--------------------------------------------
 knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
 
 ## ---- echo=FALSE--------------------------------------------------------------

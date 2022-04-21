@@ -1,13 +1,3 @@
----
-title: "text2vec"
-author: "Dmitriy Selivanov"
-output:
-  html_document:
-    toc: false
-    toc_float: false
----
-You've just discovered **[text2vec](https://github.com/dselivanov/text2vec)**!
-
 **text2vec** is an R package which provides an efficient framework with a concise API for text analysis and natural language processing (NLP). 
 
 Goals which we aimed to achieve as a result of development of `text2vec`:
@@ -22,7 +12,7 @@ See [API](http://text2vec.org/api.html) section for details.
 
 # Performance
 
-![htop](images/htop.png)
+![htop](http://text2vec.org/images/htop.png)
 
 This package is efficient because it is carefully written in C++, which also means that text2vec is memory friendly. Some parts are fully parallelized using OpenMP. 
 
@@ -44,3 +34,4 @@ Contributors are welcome. You can help by:
 # License
 
 GPL (>= 2)
+

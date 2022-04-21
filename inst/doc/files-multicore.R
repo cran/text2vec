@@ -1,7 +1,7 @@
-## ----global_options, include=FALSE, echo=FALSE---------------------------
+## ----global_options, include=FALSE, echo=FALSE--------------------------------
 knitr::opts_chunk$set(echo=TRUE, eval=TRUE, warning=FALSE, message=FALSE)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 library(text2vec)
 library(magrittr)
 data("movie_review")
@@ -22,7 +22,7 @@ for (i in 1:N_FILES ) {
 # Note what the moview review data looks like
 str(movie_review, strict.width = 'cut')
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 library(data.table)
 reader = function(x, ...) {
   # read
@@ -40,11 +40,11 @@ it_tokens = itoken(it_files, preprocessor = tolower, tokenizer = word_tokenizer,
 
 vocab = create_vocabulary(it_tokens)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 dtm = create_dtm(it_tokens, vectorizer = vocab_vectorizer(vocab))
 str(dtm, list.len = 5)
 
-## ------------------------------------------------------------------------
+## -----------------------------------------------------------------------------
 for (i in 1:N_FILES ) {
   write.table(chunks[[i]][["review"]], files[[i]], quote = T, row.names = F,
               col.names = T, sep = '|')
@@ -56,7 +56,7 @@ it_tokens = itoken(it_files, preprocessor = tolower,  tokenizer = word_tokenizer
 dtm = create_dtm(it_tokens, vectorizer = hash_vectorizer())
 str(dtm, list.len = 5)
 
-## ---- eval=FALSE---------------------------------------------------------
+## ---- eval=FALSE--------------------------------------------------------------
 #  # note that we can control level of granularity with `n_chunks` argument
 #  it_token_par = itoken_parallel(movie_review$review, preprocessor = tolower,
 #                                 tokenizer = word_tokenizer, ids = movie_review$id,
@@ -66,7 +66,7 @@ str(dtm, list.len = 5)
 #  dtm = create_dtm(it_token_par, vectorizer = v_vectorizer)
 #  
 
-## ---- warning=FALSE, message=FALSE, eval=FALSE---------------------------
+## ---- warning=FALSE, message=FALSE, eval=FALSE--------------------------------
 #  it_files_par = ifiles_parallel(file_paths = files)
 #  it_token_par = itoken_parallel(it_files_par, preprocessor = tolower, tokenizer = word_tokenizer)
 #  
