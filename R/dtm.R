@@ -4,7 +4,7 @@
 #   \code{Corpus} object.
 # @param corpus \code{HashCorpus} or \code{VocabCorpus} object. See
 #    for details.
-# @param type character, one of \code{c("dgCMatrix", "dgTMatrix")}.
+# @param type character, one of \code{c("CsparseMatrix", "TsparseMatrix")}.
 # @examples
 # N = 1000
 # tokens = word_tokenizer(tolower(movie_review$review[1:N]))
@@ -50,7 +50,7 @@ get_dtm = function(corpus_ptr) {
 #' @param it \link{itoken} iterator or \code{list} of \code{itoken} iterators.
 #' @param vectorizer \code{function} vectorizer function; see
 #'   \link{vectorizers}.
-#' @param type \code{character}, one of \code{c("dgCMatrix", "dgTMatrix")}.
+#' @param type \code{character}, one of \code{c("CsparseMatrix", "TsparseMatrix")}.
 #' @param ... placeholder for additional arguments (not used at the moment).
 #'   over \code{it}.
 #' @return A document-term matrix
@@ -75,23 +75,33 @@ get_dtm = function(corpus_ptr) {
 #' ## Example of parallel mode
 #' it = token_parallel(movie_review$review[1:N], tolower, word_tokenizer, movie_review$id[1:N])
 #' vectorizer = hash_vectorizer()
-#' dtm = create_dtm(it, vectorizer, type = 'dgTMatrix')
+#' dtm = create_dtm(it, vectorizer, type = 'TsparseMatrix')
 #' }
 #' @export
-create_dtm = function(it, vectorizer, type = c("dgCMatrix", "dgTMatrix", "RsparseMatrix"), ...) {
+create_dtm = function(it, vectorizer, type = c("dgCMatrix", "dgTMatrix", "dgRMatrix", "CsparseMatrix", "TsparseMatrix", "RsparseMatrix"), ...) {
   e = environment()
   reg.finalizer(e, malloc_trim_finalizer)
   UseMethod("create_dtm")
 }
 
+types_match = c(
+  'dgCMatrix' = 'CsparseMatrix',
+  'dgTMatrix' = 'TsparseMatrix',
+  'dgRMatrix' = 'RsparseMatrix',
+  'CsparseMatrix' = 'CsparseMatrix',
+  'TsparseMatrix' = 'TsparseMatrix',
+  'RsparseMatrix' = 'RsparseMatrix'
+)
 #' @rdname create_dtm
 #' @export
-create_dtm.itoken = function(it, vectorizer, type = c("dgCMatrix", "dgTMatrix", "RsparseMatrix"), ...) {
+create_dtm.itoken = function(it, vectorizer, type = c("dgCMatrix", "dgTMatrix", "dgRMatrix", "CsparseMatrix", "TsparseMatrix", "RsparseMatrix"), ...) {
   # because window_size = 0, put something to skip_grams_window_context: "symmetric"
   # but it is dummy - just to provide something to vectorizer
   # skip_grams_window_context = "symmetric", window_size = 0
   corp = vectorizer(it, grow_dtm = TRUE, skip_grams_window_context = "symmetric", window_size = 0, weights = numeric(0))
   type = match.arg(type)
+  type = types_match[type]
+
   # get it in triplet form - fastest and most
   # memory efficient way because internally it
   # kept in triplet form
@@ -107,13 +117,14 @@ create_dtm.itoken = function(it, vectorizer, type = c("dgCMatrix", "dgTMatrix", 
 
 #' @rdname create_dtm
 #' @export
-create_dtm.itoken_parallel = function( it, vectorizer, type = c("dgCMatrix", "dgTMatrix", "RsparseMatrix"), ...) {
+create_dtm.itoken_parallel = function( it, vectorizer, type = c("dgCMatrix", "dgTMatrix", "dgRMatrix", "CsparseMatrix", "TsparseMatrix", "RsparseMatrix"), ...) {
 
   type = match.arg(type)
+  type = types_match[type]
 
   FUN = function(x) {
     it2 = itoken(x$tokens, n_chunks = 1L, progressbar = FALSE, ids = x$ids)
-    create_dtm(it2, vectorizer, "dgTMatrix")
+    create_dtm(it2, vectorizer, "TsparseMatrix")
   }
 
   res = mc_queue(it, FUN)

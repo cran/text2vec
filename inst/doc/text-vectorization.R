@@ -1,10 +1,10 @@
 ## ----global_options, include=FALSE--------------------------------------------
 knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
 
-## ---- echo=FALSE--------------------------------------------------------------
+## ----echo=FALSE---------------------------------------------------------------
 op = options(width = 80, str = strOptions(strict.width = "cut"))
 
-## ---- loading-data, eval=TRUE, message=FALSE----------------------------------
+## ----loading-data, eval=TRUE, message=FALSE-----------------------------------
 library(text2vec)
 library(data.table)
 library(magrittr)
@@ -18,7 +18,7 @@ test_ids = setdiff(all_ids, train_ids)
 train = movie_review[J(train_ids)]
 test = movie_review[J(test_ids)]
 
-## ---- vocab-iterator, eval=TRUE, message=FALSE--------------------------------
+## ----vocab-iterator, eval=TRUE, message=FALSE---------------------------------
 # define preprocessing function and tokenization function
 prep_fun = tolower
 tok_fun = word_tokenizer
@@ -41,17 +41,17 @@ it_train = itoken(train_tokens,
 vocab = create_vocabulary(it_train)
 vocab
 
-## ---- vocab_dtm_1, eval=TRUE--------------------------------------------------
+## ----vocab_dtm_1, eval=TRUE---------------------------------------------------
 vectorizer = vocab_vectorizer(vocab)
 t1 = Sys.time()
 dtm_train = create_dtm(it_train, vectorizer)
 print(difftime(Sys.time(), t1, units = 'sec'))
 
-## ---- vocab_dtm_1_dim, eval=TRUE----------------------------------------------
+## ----vocab_dtm_1_dim, eval=TRUE-----------------------------------------------
 dim(dtm_train)
 identical(rownames(dtm_train), train$id)
 
-## ---- fit_1, message=FALSE, warning=FALSE, eval=TRUE--------------------------
+## ----fit_1, message=FALSE, warning=FALSE, eval=TRUE---------------------------
 library(glmnet)
 NFOLDS = 4
 t1 = Sys.time()
@@ -71,7 +71,7 @@ print(difftime(Sys.time(), t1, units = 'sec'))
 plot(glmnet_classifier)
 print(paste("max AUC =", round(max(glmnet_classifier$cvm), 4)))
 
-## ---- test_1, message=FALSE, warning=FALSE, eval=TRUE-------------------------
+## ----test_1, message=FALSE, warning=FALSE, eval=TRUE--------------------------
 # Note that most text2vec functions are pipe friendly!
 it_test = tok_fun(prep_fun(test$review))
 # turn off progressbar because it won't look nice in rmd
@@ -83,10 +83,10 @@ dtm_test = create_dtm(it_test, vectorizer)
 preds = predict(glmnet_classifier, dtm_test, type = 'response')[,1]
 glmnet:::auc(test$sentiment, preds)
 
-## ---- echo=FALSE--------------------------------------------------------------
+## ----echo=FALSE---------------------------------------------------------------
 rm(glmnet_classifier)
 
-## ---- prune_vocab_dtm_1-------------------------------------------------------
+## ----prune_vocab_dtm_1--------------------------------------------------------
 stop_words = c("i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours")
 t1 = Sys.time()
 vocab = create_vocabulary(it_train, stopwords = stop_words)
@@ -104,11 +104,11 @@ print(difftime(Sys.time(), t1, units = 'sec'))
 
 dim(dtm_train)
 
-## ---- prune_vocab_dtm_1_test--------------------------------------------------
+## ----prune_vocab_dtm_1_test---------------------------------------------------
 dtm_test = create_dtm(it_test, vectorizer)
 dim(dtm_test)
 
-## ---- ngram_dtm_1-------------------------------------------------------------
+## ----ngram_dtm_1--------------------------------------------------------------
 
 t1 = Sys.time()
 vocab = create_vocabulary(it_train, ngram = c(1L, 2L))
@@ -140,10 +140,10 @@ dtm_test = create_dtm(it_test, bigram_vectorizer)
 preds = predict(glmnet_classifier, dtm_test, type = 'response')[,1]
 glmnet:::auc(test$sentiment, preds)
 
-## ---- echo=FALSE--------------------------------------------------------------
+## ----echo=FALSE---------------------------------------------------------------
 rm(glmnet_classifier)
 
-## ---- hash_dtm----------------------------------------------------------------
+## ----hash_dtm-----------------------------------------------------------------
 h_vectorizer = hash_vectorizer(hash_size = 2 ^ 14, ngram = c(1L, 2L))
 
 t1 = Sys.time()
@@ -171,7 +171,7 @@ glmnet:::auc(test$sentiment, preds)
 ## -----------------------------------------------------------------------------
 dtm_train_l1_norm = normalize(dtm_train, "l1")
 
-## ---- tfidf_dtm_1-------------------------------------------------------------
+## ----tfidf_dtm_1--------------------------------------------------------------
 vocab = create_vocabulary(it_train)
 vectorizer = vocab_vectorizer(vocab)
 dtm_train = create_dtm(it_train, vectorizer)
@@ -185,7 +185,7 @@ dtm_train_tfidf = fit_transform(dtm_train, tfidf)
 dtm_test_tfidf = create_dtm(it_test, vectorizer)
 dtm_test_tfidf = transform(dtm_test_tfidf, tfidf)
 
-## ---- fit_2, message=FALSE, warning=FALSE, eval=TRUE--------------------------
+## ----fit_2, message=FALSE, warning=FALSE, eval=TRUE---------------------------
 t1 = Sys.time()
 glmnet_classifier = cv.glmnet(x = dtm_train_tfidf, y = train[['sentiment']], 
                               family = 'binomial', 
@@ -202,6 +202,6 @@ print(paste("max AUC =", round(max(glmnet_classifier$cvm), 4)))
 preds = predict(glmnet_classifier, dtm_test_tfidf, type = 'response')[,1]
 glmnet:::auc(test$sentiment, preds)
 
-## ---- echo=FALSE--------------------------------------------------------------
+## ----echo=FALSE---------------------------------------------------------------
 rm(glmnet_classifier)
 

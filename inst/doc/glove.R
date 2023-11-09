@@ -26,7 +26,7 @@ knitr::opts_chunk$set(echo=TRUE, eval=FALSE, warning=FALSE, message=FALSE)
 #  # use window of 5 for context words
 #  tcm <- create_tcm(it, vectorizer, skip_grams_window = 5L)
 
-## ---- message=TRUE------------------------------------------------------------
+## ----message=TRUE-------------------------------------------------------------
 #  glove = GlobalVectors$new(rank = 50, x_max = 10)
 #  wv_main = glove$fit_transform(tcm, n_iter = 10, convergence_tol = 0.01, n_threads = 8)
 #  # INFO  [09:35:20.779] epoch 1, loss 0.1758

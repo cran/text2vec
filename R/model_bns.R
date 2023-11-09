@@ -44,6 +44,7 @@
 #' }
 #' @export
 #' @examples
+#' \dontrun{
 #' data("movie_review")
 #' N = 1000
 #' it = itoken(head(movie_review$review, N), preprocessor = tolower, tokenizer = word_tokenizer)
@@ -51,6 +52,7 @@
 #' dtm = create_dtm(it, vocab_vectorizer(vocab))
 #' model_bns = BNS$new()
 #' dtm_bns = model_bns$fit_transform(dtm, head(movie_review$sentiment, N))
+#' }
 BNS = R6::R6Class(
   classname = c("BNS"),
   inherit = mlapi::mlapiTransformation,
@@ -82,7 +84,7 @@ BNS = R6::R6Class(
     fitted = FALSE,
     prepare_x = function(x) {
       x_internal = super$check_convert_input(x)
-      as(x, "lgCMatrix")
+      as(x, "lsparseMatrix")
     },
     clip = function(x, min_val, max_val){
       pmin(pmax(x, min_val), max_val)

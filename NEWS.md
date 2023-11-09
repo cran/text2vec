@@ -1,3 +1,9 @@
+# text2vec 0.6.5 (2023-10-16)
+- fix test discovered with `Matrix==1.6-2` release
+
+# text2vec 0.6.4 (2023-02-15)
+- update dependency `Matrix>=1.5-2`, fixes #338
+
 # text2vec 0.6.2 (2022-09-11)
 - removed test which is not needed with Matrix package v 1.5
 
@@ -42,7 +48,7 @@
     * Add additional filters to `prune_vocabulary` - filter by document counts
     * Clean up LSA, fixed transform method. Added option to use randomized SVD algorithm from `irlba`.
 1. 2017-05-17
-    * Imrove `dist2` performamce for RWMD - incorporate ideas from [gensim PR discussion](https://github.com/RaRe-Technologies/gensim/pull/800#issuecomment-260743822).
+    * Imrove `dist2` performamce for RWMD - incorporate ideas from [gensim PR discussion](https://github.com/piskvorky/gensim/pull/800#issuecomment-260743822).
 1. 2017-05-17
     * **API breaking change** - vocabulary format change - now plain `data.frame` with meta-information in attributes (stopwords, ngram, number of docs, etc).
 1. 2017-03-25

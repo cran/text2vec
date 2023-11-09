@@ -7,13 +7,15 @@
 \title{Document-term matrix construction}
 \usage{
 create_dtm(it, vectorizer, type = c("dgCMatrix", "dgTMatrix",
-  "RsparseMatrix"), ...)
+  "dgRMatrix", "CsparseMatrix", "TsparseMatrix", "RsparseMatrix"), ...)
 
 \method{create_dtm}{itoken}(it, vectorizer, type = c("dgCMatrix",
-  "dgTMatrix", "RsparseMatrix"), ...)
+  "dgTMatrix", "dgRMatrix", "CsparseMatrix", "TsparseMatrix",
+  "RsparseMatrix"), ...)
 
 \method{create_dtm}{itoken_parallel}(it, vectorizer,
-  type = c("dgCMatrix", "dgTMatrix", "RsparseMatrix"), ...)
+  type = c("dgCMatrix", "dgTMatrix", "dgRMatrix", "CsparseMatrix",
+  "TsparseMatrix", "RsparseMatrix"), ...)
 }
 \arguments{
 \item{it}{\link{itoken} iterator or \code{list} of \code{itoken} iterators.}
@@ -21,7 +23,7 @@ create_dtm(it, vectorizer, type = c("dgCMatrix", "dgTMatrix",
 \item{vectorizer}{\code{function} vectorizer function; see
 \link{vectorizers}.}
 
-\item{type}{\code{character}, one of \code{c("dgCMatrix", "dgTMatrix")}.}
+\item{type}{\code{character}, one of \code{c("CsparseMatrix", "TsparseMatrix")}.}
 
 \item{...}{placeholder for additional arguments (not used at the moment).
 over \code{it}.}
@@ -60,7 +62,7 @@ dtm_tfidf = transformer_tfidf(dtm)
 ## Example of parallel mode
 it = token_parallel(movie_review$review[1:N], tolower, word_tokenizer, movie_review$id[1:N])
 vectorizer = hash_vectorizer()
-dtm = create_dtm(it, vectorizer, type = 'dgTMatrix')
+dtm = create_dtm(it, vectorizer, type = 'TsparseMatrix')
 }
 }
 \seealso{

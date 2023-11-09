@@ -1,6 +1,6 @@
 Package: text2vec
 Type: Package
-Version: 0.6.3
+Version: 0.6.4
 Title: Modern Text Mining Framework for R
 License: GPL (>= 2) | file LICENSE
 Description: Fast and memory-friendly tools for text vectorization, topic
@@ -17,11 +17,10 @@ Authors@R: c(
       comment = "Author of the WaprLDA C++ code"))
 Maintainer: Dmitriy Selivanov <selivanov.dmitriy@gmail.com>
 Encoding: UTF-8
-SystemRequirements: C++11
 Depends: R (>= 3.6.0), methods
-Imports: Matrix (>= 1.5), Rcpp (>= 1.0.3), R6 (>= 2.3.0), data.table(>=
-        1.9.6), rsparse (>= 0.3.3.4), stringi (>= 1.1.5), mlapi (>=
-        0.1.0), lgr (>= 0.2), digest (>= 0.6.8)
+Imports: Matrix (>= 1.5-2), Rcpp (>= 1.0.3), R6 (>= 2.3.0),
+        data.table(>= 1.9.6), rsparse (>= 0.3.3.4), stringi (>= 1.1.5),
+        mlapi (>= 0.1.0), lgr (>= 0.2), digest (>= 0.6.8)
 LinkingTo: Rcpp, digest (>= 0.6.8)
 Suggests: magrittr, udpipe (>= 0.6), glmnet, testthat, covr, knitr,
         rmarkdown, proxy
@@ -29,11 +28,11 @@ URL: http://text2vec.org
 BugReports: https://github.com/dselivanov/text2vec/issues
 VignetteBuilder: knitr
 LazyData: true
-RoxygenNote: 7.2.1
+RoxygenNote: 6.1.1
 NeedsCompilation: yes
-Packaged: 2022-11-30 03:33:46 UTC; dselivanov
+Packaged: 2023-11-09 02:33:27 UTC; dselivanov
 Author: Dmitriy Selivanov [aut, cre, cph],
   Manuel Bickel [aut, cph] (Coherence measures for topic models),
   Qing Wang [aut, cph] (Author of the WaprLDA C++ code)
 Repository: CRAN
-Date/Publication: 2022-11-30 09:20:02 UTC
+Date/Publication: 2023-11-09 07:10:06 UTC
